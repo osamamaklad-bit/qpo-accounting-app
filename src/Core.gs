@@ -14,6 +14,7 @@
 
 const APP = {
   TITLE: 'PetFriend • QBO',
+  WEBAPP_URL: 'https://script.google.com/macros/s/AKfycby5qiOh4iZ902dce7d7sPaKOmZy3pH92fCqL6mDwAfnPtIIC3ZjRDUlFCVsMhALMTUv/exec',   // يُستخدم لو Script Property WEBAPP_URL فاضية
   TZ: 'Africa/Cairo',
   SESSION_SEC: 6 * 3600,   // 6 ساعات (الحد الأقصى للكاش)
   LOG_TAB: 'Runs',
@@ -360,7 +361,7 @@ function findJob_(id) {
 
 function webhookUrl_(kind) {
   const P = PropertiesService.getScriptProperties();
-  let base = (P.getProperty('WEBAPP_URL') || '').trim();
+  let base = (P.getProperty('WEBAPP_URL') || APP.WEBAPP_URL || '').trim();
   if (!base) { try { base = ScriptApp.getService().getUrl(); } catch (x) {} }
   if (!base) return '';
   if (kind === 'bosta') {

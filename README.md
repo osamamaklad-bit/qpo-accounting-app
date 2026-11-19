@@ -1,5 +1,7 @@
 # PetFriend • QBO accounting app
 
+**رابط الواجهة:** https://script.google.com/macros/s/AKfycby5qiOh4iZ902dce7d7sPaKOmZy3pH92fCqL6mDwAfnPtIIC3ZjRDUlFCVsMhALMTUv/exec
+
 مشروع Google Apps Script واحد بيجمع كل أتمتة QuickBooks Online لـ PetFriend Stores، وليه واجهة إدارة واحدة محمية بكلمة سر.
 
 | الملف | الوظيفة |
