@@ -68,6 +68,14 @@ GitHub Pages بيتنشر من جذر `main`. `index.html` في الجذر نس�
 إعداد Pages: Settings ← Pages ← Deploy from a branch ← `main` / `(root)`.
 لازم آخر نسخة من `Core.gs` تكون متنشرة على Apps Script، وإلا الواجهة هتقول "تعذّر الاتصال بالسكريبت".
 
+## تطبيق على الموبايل والكمبيوتر (PWA)
+
+رابط GitHub Pages بيتثبت كتطبيق (`manifest.webmanifest` + `sw.js` + `icons/` في الجذر):
+- **Chrome / Edge (كمبيوتر أو أندرويد):** زرار "ثبّت التطبيق" فوق في الواجهة، أو أيقونة التثبيت في شريط العنوان.
+- **آيفون (Safari):** زرار المشاركة ← Add to Home Screen.
+
+الـ service worker بيخزّن شكل الصفحة والأيقونات بس، ومفيش أي بيانات أو كلمات سر بتتخزن فيه. لو غيّرت `sw.js` زوّد رقم `CACHE`.
+
 ## النشر من جهازك (أو من Claude Code)
 
 ```bash

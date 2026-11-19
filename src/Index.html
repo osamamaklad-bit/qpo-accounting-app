@@ -6,6 +6,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PetFriend • QBO</title>
 <link rel="icon" href="https://cdn.shopify.com/s/files/1/0690/9218/0245/files/Logo_32_-_32_Pix-01.png">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PF QBO">
+<link rel="apple-touch-icon" href="https://osamamaklad-bit.github.io/qpo-accounting-app/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -189,6 +195,7 @@ pre{background:var(--navy);color:#e9f0ff;padding:14px;border-radius:14px;overflo
         <button data-tab="account" onclick="showTab('account')" data-i="tabAccount"></button>
       </nav>
       <div class="spacer"></div>
+      <button id="installBtn" class="sm hidden" onclick="installApp()" data-i="install"></button>
       <button class="ghost sm" onclick="toggleLang()" data-i="otherLang"></button>
       <button class="sm" onclick="logout()" data-i="signOut"></button>
     </div>
@@ -258,7 +265,7 @@ pre{background:var(--navy);color:#e9f0ff;padding:14px;border-radius:14px;overflo
 /* ---------- اللغة / Language ---------- */
 const I18N = {
   ar: {
-    otherLang:'English', tagline:'لوحة إدارة القيود والمزامنة', pw:'كلمة السر', signIn:'دخول', signOut:'خروج',
+    install:'ثبّت التطبيق', otherLang:'English', tagline:'لوحة إدارة القيود والمزامنة', pw:'كلمة السر', signIn:'دخول', signOut:'خروج',
     tabHome:'الرئيسية', tabLogs:'السجل', tabSettings:'الإعدادات', tabAccount:'الحساب',
     ok:'تم', warn:'تحذير', error:'خطأ', running:'شغال', stopped:'اتوقف', none:'لم يُشغّل بعد',
     manual:'يدوي', schedule:'مجدول', webhook:'ويب هوك',
@@ -295,7 +302,7 @@ const I18N = {
     pwNote:'بعد التغيير هيتعمل خروج من كل الأجهزة.', pwMismatch:'التأكيد مش مطابق', pwDone:'تم تغيير كلمة السر، ادخل بالجديدة'
   },
   en: {
-    otherLang:'عربي', tagline:'Journals & sync control panel', pw:'Password', signIn:'Sign in', signOut:'Sign out',
+    install:'Install app', otherLang:'عربي', tagline:'Journals & sync control panel', pw:'Password', signIn:'Sign in', signOut:'Sign out',
     tabHome:'Overview', tabLogs:'Run log', tabSettings:'Settings', tabAccount:'Account',
     ok:'OK', warn:'Warning', error:'Failed', running:'Running', stopped:'Stopped', none:'Not run yet',
     manual:'Manual', schedule:'Scheduled', webhook:'Webhook',
@@ -637,6 +644,22 @@ async function changePw(){
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+/* ---------- تطبيق (PWA) / App ---------- */
+// بيشتغل بس على GitHub Pages. جوه Apps Script الصفحة في iframe ومينفعش تتثبت.
+let INSTALL_PROMPT = null;
+if (!IN_GAS && /github\.io$/.test(location.hostname)){
+  const m = document.createElement('link'); m.rel = 'manifest'; m.href = 'manifest.webmanifest'; document.head.appendChild(m);
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); INSTALL_PROMPT = e; $('installBtn').classList.remove('hidden'); });
+  window.addEventListener('appinstalled', () => { INSTALL_PROMPT = null; $('installBtn').classList.add('hidden'); });
+}
+async function installApp(){
+  if (!INSTALL_PROMPT) return;
+  INSTALL_PROMPT.prompt();
+  try{ await INSTALL_PROMPT.userChoice; }catch(e){}
+  INSTALL_PROMPT = null; $('installBtn').classList.add('hidden');
+}
 
 applyLang();
 TOKEN = lsGet('qboTok');
