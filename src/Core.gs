@@ -14,7 +14,7 @@
 
 const APP = {
   TITLE: 'PetFriend • QBO',
-  FAVICON: 'https://cdn.shopify.com/s/files/1/0690/9218/0245/files/Logo_32_-_32_Pix-01.png?v=1755790239',
+  FAVICON: 'https://cdn.shopify.com/s/files/1/0690/9218/0245/files/Logo_32_-_32_Pix-01.png',
   WEBAPP_URL: 'https://script.google.com/macros/s/AKfycby5qiOh4iZ902dce7d7sPaKOmZy3pH92fCqL6mDwAfnPtIIC3ZjRDUlFCVsMhALMTUv/exec',   // يُستخدم لو Script Property WEBAPP_URL فاضية
   TZ: 'Africa/Cairo',
   SESSION_SEC: 6 * 3600,   // 6 ساعات (الحد الأقصى للكاش)
