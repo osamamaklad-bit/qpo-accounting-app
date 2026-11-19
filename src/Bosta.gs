@@ -41,8 +41,7 @@ function checkProps() {
 
 function syncBostaPayouts_() {
   const P = PropertiesService.getScriptProperties();
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  // نفس السكريبت مش بيشتغل مرتين مع بعض: القفل في runLogged_ (Core.gs)، فمفيش قفل هنا يعطّل باقي السكريبتات
   try {
     const start = P.getProperty('BOSTA_PAYOUT_START_DATE') || '9999-12-31';
     const dry = String(P.getProperty('BOSTA_DRY_RUN') || '').trim().toLowerCase() !== 'false';   // أي حاجة غير false = تجربة
@@ -81,7 +80,7 @@ function syncBostaPayouts_() {
     });
     return { ok: true, dryRun: dry, results: results };
   } finally {
-    lock.releaseLock();
+    // nothing to release
   }
 }
 
@@ -243,7 +242,7 @@ function getQboToken_() {
   if (cached) return cached;
 
   // تجديد واحد بس في نفس الوقت: لو مهمتين احتاجوا توكن مع بعض، التانية بتاخد التوكن اللي الأولى جددته
-  const lock = LockService.getUserLock();
+  const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
     const again = cache.get('QBO_ACCESS_TOKEN');

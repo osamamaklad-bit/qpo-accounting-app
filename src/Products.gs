@@ -236,14 +236,8 @@ function pqSyncAll() {
 }
 
 function pqRunLocked_(options) {
-  const lock = LockService.getScriptLock();
-
-  if (!lock.tryLock(5000)) {
-    Logger.log('Another sync is still running. Skipped.');
-    return { skipped: true };
-  }
-
-  try {
+  // نفس السكريبت مش بيشتغل مرتين مع بعض: القفل في runLogged_ (Core.gs)، فمفيش قفل هنا يعطّل باقي السكريبتات
+  {
     const summary = pqRun_(options);
 
     Logger.log(JSON.stringify({
@@ -257,8 +251,6 @@ function pqRunLocked_(options) {
     }, null, 2));
 
     return summary;
-  } finally {
-    lock.releaseLock();
   }
 }
 

@@ -182,8 +182,7 @@ function kashierMapPayment_(raw) {
 
 function kashierSyncPayouts_() {
   const P = PropertiesService.getScriptProperties();
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  // نفس السكريبت مش بيشتغل مرتين مع بعض: القفل في runLogged_ (Core.gs)، فمفيش قفل هنا يعطّل باقي السكريبتات
   try {
     const start = kashierStartDate_();
     const dry = kashierDryRun_();
@@ -236,7 +235,7 @@ function kashierSyncPayouts_() {
     });
     return { ok: true, dryRun: dry, results: results };
   } finally {
-    lock.releaseLock();
+    // nothing to release
   }
 }
 

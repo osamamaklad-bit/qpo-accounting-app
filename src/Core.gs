@@ -216,7 +216,7 @@ function isStale_(time) { return String(time) < nowStr_(new Date(Date.now() - 7 
 
 // قفل لكل سكريبت: يمنع نفس السكريبت يشتغل مرتين في نفس الوقت (زرار اتداس مرتين، أو يدوي + موعد)
 function acquireJob_(jobId) {
-  const L = LockService.getUserLock();
+  const L = LockService.getScriptLock();   // بيتمسك أجزاء من الثانية بس
   if (!L.tryLock(15000)) return false;
   try {
     const c = CacheService.getScriptCache();
