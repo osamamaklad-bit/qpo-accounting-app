@@ -69,7 +69,7 @@ a.badge{color:#000;font-weight:600}
 .modal .box{width:min(900px,100%);max-height:90vh;display:flex;flex-direction:column}
 pre{background:#111;color:#e8fdfe;padding:12px;border-radius:10px;overflow:auto;flex:1;white-space:pre-wrap;word-break:break-word;font-size:12px;direction:ltr;text-align:left;margin:10px 0 0}
 #toast{position:fixed;bottom:18px;left:18px;background:#000;color:#fff;border-left:6px solid var(--cyan);padding:10px 14px;border-radius:8px;z-index:30;max-width:420px}
-.err{color:var(--red);margin-top:8px;font-size:13px;font-weight:600}
+.err{color:var(--red);margin-top:8px;font-size:13px;font-weight:600;word-break:break-word}
 .drytag{background:var(--red);color:#fff;font-size:11px;border-radius:6px;padding:1px 7px;margin-right:6px}
 input[type=checkbox]{accent-color:var(--red);width:16px;height:16px}
 @media(max-width:700px){.prop{grid-template-columns:1fr}.grid{grid-template-columns:1fr}}
@@ -170,7 +170,7 @@ function call(fn, ...args){
   const p = IN_GAS
     ? new Promise((res, rej) => { google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...args); })
     : fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({fn, args}) })
-        .catch(() => { throw new Error('تعذّر الاتصال بالسكريبت. تأكد إن آخر نسخة من Core.gs متنشرة على Apps Script.'); })
+        .catch(() => { throw new Error('تعذّر الاتصال بالسكريبت. افتح ' + API_URL.split('?')[0] + '?ping=1 في نافذة تصفح خفي: لازم يظهر {"ok":true,"ui":true}. لو طلب تسجيل دخول جوجل يبقى الـ Deployment مش "Anyone"، ولو ظهرت الواجهة يبقى Core.gs الجديد لسه متنشرش (New version).'); })
         .then(r => r.json().catch(() => { throw new Error('رد غير متوقع من السكريبت (HTTP ' + r.status + ')'); }))
         .then(d => { if (!d.ok) throw new Error(d.error); return d.result; });
   return p.catch(e => {

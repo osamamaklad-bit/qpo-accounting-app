@@ -155,7 +155,9 @@ function pqClearQueue() {
    WEB APP
    ============================================================ */
 
-function doGet() {
+function doGet(e) {
+  // اختبار سريع: افتح رابط /exec?ping=1 ← لو ظهر {"ok":true,"ui":true} يبقى النسخة الجديدة متنشرة
+  if (e && e.parameter && e.parameter.ping) return json_({ ok: true, ui: true, time: new Date().toISOString() });
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle(APP.TITLE)
     .setFaviconUrl(APP.FAVICON)
