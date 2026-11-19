@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* PetFriend brand: cyan #8ef5fc · red #e3041c · black · peach #ffeee6 · Quicksand */
+:root{--bg:#ffeee6;--card:#fff;--ink:#000;--mute:#5b5b5b;--line:rgba(0,0,0,.14);--cyan:#8ef5fc;--red:#e3041c;--peach:#ffeee6;--ok:#15803d;--warn:#b45309;--err:#e3041c;--shadow:6px 4px 5px rgba(0,0,0,.35)}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Quicksand","Cairo",Tahoma,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;font-weight:500}
+.hidden{display:none!important}
+button{font:inherit;font-weight:600;cursor:pointer;border:2px solid #000;background:#fff;color:#000;border-radius:6px;padding:7px 13px;transition:transform .08s,box-shadow .08s}
+button:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 #000}
+button:active{transform:none;box-shadow:none}
+button.pri{background:var(--cyan)}
+button.sm{padding:4px 10px;font-size:12px;border-width:1.5px}
+button.danger{color:var(--red);border-color:var(--red)}
+input,select,textarea{font:inherit;border:1.5px solid rgba(0,0,0,.45);border-radius:6px;padding:7px 9px;background:#fff;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#000;box-shadow:0 0 0 3px var(--cyan)}
+textarea{min-height:110px;direction:ltr}
+.mono{font-family:Consolas,monospace;direction:ltr;text-align:left}
+.center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.box{background:var(--card);border:3px solid rgba(0,0,0,.9);border-radius:16px;box-shadow:var(--shadow);padding:26px;width:350px}
+.login-logo{display:block;width:120px;height:120px;object-fit:contain;margin:0 auto 6px}
+.box h1{font-size:20px;margin:0 0 4px;text-align:center}
+.tag{text-align:center;color:var(--mute);font-size:12px;margin-bottom:18px}
+header{background:#fff;border-bottom:4px solid var(--cyan);padding:8px 18px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:5;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand img{width:44px;height:44px;object-fit:contain}
+header h1{font-size:17px;margin:0;font-weight:700}
+header h1 span{color:var(--red)}
+nav{display:flex;gap:4px;flex:1}
+nav button{border:none;background:none;border-radius:0;border-bottom:3px solid transparent;padding:8px 12px}
+nav button:hover{transform:none;box-shadow:none;border-bottom-color:var(--cyan)}
+nav button.on{border-bottom-color:var(--red);font-weight:700}
+main{padding:18px;max-width:1250px;margin:auto}
+h2{font-size:17px;margin:26px 0 12px;display:flex;align-items:center;gap:8px}
+h2:before{content:"";width:10px;height:10px;border-radius:50%;background:var(--red)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(370px,1fr));gap:18px}
+.card{background:var(--card);border:3px solid rgba(0,0,0,.9);border-radius:16px;box-shadow:var(--shadow);padding:16px}
+.card h3{margin:0 0 4px;font-size:15px;font-weight:700}
+.desc{color:var(--mute);font-size:12px;margin-bottom:10px}
+.pill{display:inline-block;border-radius:10px;padding:1px 9px;font-size:12px;font-weight:700;border:1.5px solid currentColor}
+.pill.ok{background:#e8f8ee;color:var(--ok)}.pill.warn{background:#fff4dc;color:var(--warn)}.pill.error{background:#ffe5e8;color:var(--red)}.pill.none{background:#f3f3f3;color:var(--mute)}
+.last{background:#fbfbfb;border:1.5px dashed rgba(0,0,0,.25);border-radius:10px;padding:8px;font-size:12px;margin-bottom:10px}
+.last .s{color:var(--mute);margin-top:4px;word-break:break-word}
+.row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}
+.row label{flex:1}
+.row select{width:auto}
+.acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.sub{font-size:12px;color:var(--mute);margin-top:10px;margin-bottom:2px}
+.hook{display:flex;gap:6px}.hook input{font-size:11px}
+table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:3px solid rgba(0,0,0,.9);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;font-size:13px;vertical-align:top}
+th{background:var(--cyan);font-weight:700}
+tr.click{cursor:pointer}tr.click:hover{background:var(--peach)}
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.toolbar select{width:auto}
+.prop{display:grid;grid-template-columns:260px 1fr auto;gap:8px;align-items:center;margin:6px 0}
+.prop .k{font-family:Consolas,monospace;font-size:12px;direction:ltr;text-align:left}
+.badge{font-size:11px;color:var(--mute)}
+a.badge{color:#000;font-weight:600}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
+.modal .box{width:min(900px,100%);max-height:90vh;display:flex;flex-direction:column}
+pre{background:#111;color:#e8fdfe;padding:12px;border-radius:10px;overflow:auto;flex:1;white-space:pre-wrap;word-break:break-word;font-size:12px;direction:ltr;text-align:left;margin:10px 0 0}
+#toast{position:fixed;bottom:18px;left:18px;background:#000;color:#fff;border-left:6px solid var(--cyan);padding:10px 14px;border-radius:8px;z-index:30;max-width:420px}
+.err{color:var(--red);margin-top:8px;font-size:13px;font-weight:600}
+.drytag{background:var(--red);color:#fff;font-size:11px;border-radius:6px;padding:1px 7px;margin-right:6px}
+input[type=checkbox]{accent-color:var(--red);width:16px;height:16px}
+@media(max-width:700px){.prop{grid-template-columns:1fr}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="login" class="center hidden">
+  <div class="box">
+    <img class="login-logo" src="https://cdn.shopify.com/s/files/1/0690/9218/0245/files/Logo_512_-_512_Pix-02_991cbc0a-254f-4f71-ae5f-2f0e2f200f27.png?v=1786004770" alt="PetFriend" onerror="this.remove()">
+    <h1>Pet<span style="color:var(--red)">Friend</span> • QBO</h1>
+    <div class="tag">لوحة إدارة القيود والمزامنة</div>
+    <input id="pw" type="password" placeholder="كلمة السر" onkeydown="if(event.key==='Enter')doLogin()">
+    <div style="margin-top:12px"><button class="pri" style="width:100%" onclick="doLogin()">دخول</button></div>
+    <div id="loginErr" class="err"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <div class="brand"><img src="https://cdn.shopify.com/s/files/1/0690/9218/0245/files/Logo_512_-_512_Pix-02_991cbc0a-254f-4f71-ae5f-2f0e2f200f27.png?v=1786004770" alt="PetFriend" onerror="this.remove()"><h1>Pet<span>Friend</span> • QBO</h1></div>
+    <nav>
+      <button data-tab="home" onclick="showTab('home')">الرئيسية</button>
+      <button data-tab="logs" onclick="showTab('logs')">السجل</button>
+      <button data-tab="settings" onclick="showTab('settings')">الإعدادات</button>
+      <button data-tab="account" onclick="showTab('account')">الحساب</button>
+    </nav>
+    <button class="sm" onclick="logout()">خروج</button>
+  </header>
+  <main>
+    <section id="tab-home"></section>
+
+    <section id="tab-logs" class="hidden">
+      <div class="toolbar">
+        <select id="logJob" onchange="loadLogs()"></select>
+        <button class="sm" onclick="loadLogs()">تحديث</button>
+        <a id="logSheet" target="_blank" class="badge"></a>
+      </div>
+      <div id="logsBody"></div>
+    </section>
+
+    <section id="tab-settings" class="hidden">
+      <div class="toolbar">
+        <button class="pri" onclick="saveSettings()">حفظ التغييرات</button>
+        <button onclick="loadAccounts()">تحميل حسابات QBO</button>
+        <button onclick="testConn()">اختبار الاتصال</button>
+        <span id="connRes" class="badge"></span>
+      </div>
+      <div id="settingsBody"></div>
+      <h2>استيراد الإعدادات من المشاريع القديمة</h2>
+      <div class="card">
+        <div class="desc">الصق ناتج exportAllProps (JSON) أو رابط ملف Drive اللي طلع منه.</div>
+        <textarea id="impText" placeholder='{"QBO_REALM_ID":"..."}  أو  https://drive.google.com/file/d/...'></textarea>
+        <div class="row"><label><input type="checkbox" id="impOver" style="width:auto"> استبدال القيم الموجودة</label>
+          <button class="pri" onclick="importProps()">استيراد</button></div>
+        <div id="impRes" class="badge"></div>
+      </div>
+    </section>
+
+    <section id="tab-account" class="hidden">
+      <div class="card" style="max-width:420px">
+        <h3>تغيير كلمة السر</h3>
+        <div class="row"><input id="oldPw" type="password" placeholder="كلمة السر الحالية"></div>
+        <div class="row"><input id="newPw" type="password" placeholder="كلمة السر الجديدة (8 حروف على الأقل)"></div>
+        <div class="row"><input id="newPw2" type="password" placeholder="تأكيد كلمة السر الجديدة"></div>
+        <button class="pri" onclick="changePw()">حفظ</button>
+        <div class="desc" style="margin-top:8px">بعد التغيير هيتعمل خروج من كل الأجهزة.</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="modal" class="modal hidden" onclick="if(event.target===this)closeModal()">
+  <div class="box">
+    <div class="row"><b id="mTitle" style="flex:1"></b><button class="sm" onclick="closeModal()">إغلاق</button></div>
+    <div id="mMeta" class="badge"></div>
+    <pre id="mLog"></pre>
+  </div>
+</div>
+<div id="toast" class="hidden"></div>
+
+<script>
+let TOKEN = null, STATE = null, SETTINGS = null, ACCOUNTS = null;
+const ST = {ok:'تم', warn:'تحذير', error:'خطأ'};
+const SRC = {manual:'يدوي', schedule:'مجدول', webhook:'ويب هوك'};
+
+function store(k, v){ try{ v===undefined ? null : (v===null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v)); return sessionStorage.getItem(k);}catch(e){return null;} }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function $(id){ return document.getElementById(id); }
+function toast(msg, ms){ const t=$('toast'); t.textContent=msg; t.classList.remove('hidden'); clearTimeout(t._h); if(ms!==0) t._h=setTimeout(()=>t.classList.add('hidden'), ms||3500); }
+function errMsg(e){ return String((e && e.message) || e).replace(/^Error:\s*/,''); }
+
+function call(fn, ...args){
+  return new Promise((res, rej) => {
+    google.script.run.withSuccessHandler(res).withFailureHandler(e => {
+      if (errMsg(e) === 'AUTH') { showLogin('انتهت الجلسة، ادخل تاني'); }
+      rej(e);
+    })[fn](...args);
+  });
+}
+
+function showLogin(msg){ TOKEN=null; store('qboTok', null); $('app').classList.add('hidden'); $('login').classList.remove('hidden'); $('loginErr').textContent = msg||''; $('pw').focus(); }
+async function doLogin(){
+  $('loginErr').textContent='';
+  try{ TOKEN = await call('api_login', $('pw').value); store('qboTok', TOKEN); $('pw').value=''; start(); }
+  catch(e){ $('loginErr').textContent = errMsg(e); }
+}
+async function logout(){ try{ await call('api_logout', TOKEN);}catch(e){} showLogin(); }
+
+function start(){ $('login').classList.add('hidden'); $('app').classList.remove('hidden'); showTab('home'); }
+
+function showTab(name){
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab===name));
+  ['home','logs','settings','account'].forEach(n => $('tab-'+n).classList.toggle('hidden', n!==name));
+  if(name==='home') loadHome();
+  if(name==='logs') loadLogs();
+  if(name==='settings') loadSettings();
+}
+
+/* ---------- الرئيسية ---------- */
+async function loadHome(){
+  try{ STATE = await call('api_state', TOKEN); renderHome(); }
+  catch(e){ if(errMsg(e)!=='AUTH') toast(errMsg(e), 6000); }
+}
+
+function hours(sel){ let o=''; for(let h=0;h<24;h++) o+=`<option value="${h}" ${h===sel?'selected':''}>${String(h).padStart(2,'0')}:00</option>`; return o; }
+
+function renderHome(){
+  let h = '';
+  STATE.groups.forEach(g => {
+    h += `<h2>${esc(g.name)}</h2><div class="grid">`;
+    STATE.jobs.forEach((j, ji) => {
+      if (j.group !== g.id) return;
+      const L = j.last;
+      h += `<div class="card"><h3>${esc(j.name)}${j.dry?'<span class="drytag">وضع تجربة</span>':''}</h3><div class="desc">${esc(j.desc)}</div>`;
+      h += `<div class="last">${L ? `<span class="pill ${L.status}">${ST[L.status]||L.status}</span> ${esc(L.time)} · ${esc(SRC[L.source]||L.source)} · ${esc(L.action)}<div class="s">${esc(L.summary)}</div>`
+                         : '<span class="pill none">لم يُشغّل بعد</span>'}</div>`;
+      j.triggers.forEach((t, ti) => {
+        h += `<div class="row"><label><input type="checkbox" id="tg-${ji}-${ti}" style="width:auto" ${t.enabled?'checked':''} onchange="setTrig(${ji},${ti})"> ${esc(t.label)}</label>`;
+        h += t.type==='daily' ? `<select id="th-${ji}-${ti}" onchange="setTrig(${ji},${ti})">${hours(t.hour)}</select>` : `<span class="badge">كل ${t.every} دقيقة</span>`;
+        h += `</div>`;
+      });
+      if (j.queue !== null) h += `<div class="badge">منتجات في الطابور: ${j.queue}</div>`;
+      h += `<div class="acts">`;
+      j.actions.forEach((a, ai) => h += `<button class="sm ${ai===0?'pri':''}" onclick="runAct(${ji},${ai})">${esc(a.label)}</button>`);
+      if (j.dryKey) h += `<button class="sm" onclick="toggleDry(${ji})">${j.dry?'إيقاف وضع التجربة':'تفعيل وضع التجربة'}</button>`;
+      h += `<button class="sm" onclick="jobLogs('${j.id}')">السجل</button></div>`;
+      if (j.webhook !== null) {
+        h += `<div class="sub">رابط الويب هوك</div>` + (j.webhook
+          ? `<div class="hook"><input class="mono" readonly value="${esc(j.webhook)}"><button class="sm" onclick="copyText(${ji})">نسخ</button></div>`
+          : `<div class="badge">اضبط WEBAPP_URL والتوكن من الإعدادات</div>`);
+      }
+      h += `</div>`;
+    });
+    h += `</div>`;
+  });
+  if (STATE.others.length){
+    h += `<h2>مواعيد أخرى في المشروع</h2><div class="card"><div class="desc">مواعيد اتعملت من المحرر مباشرة (مش بتتسجل في السجل). امسحها لو مكررة مع المواعيد اللي فوق.</div>`;
+    STATE.others.forEach(o => h += `<div class="row"><span class="mono" style="flex:1">${esc(o.fn)} <span class="badge">${esc(o.type)}</span></span><button class="sm danger" onclick="delTrig('${esc(o.id)}')">حذف</button></div>`);
+    h += `</div>`;
+  }
+  $('tab-home').innerHTML = h;
+}
+
+async function setTrig(ji, ti){
+  const j = STATE.jobs[ji], t = j.triggers[ti];
+  const on = $(`tg-${ji}-${ti}`).checked, hr = $(`th-${ji}-${ti}`) ? Number($(`th-${ji}-${ti}`).value) : 0;
+  toast('جاري الحفظ...', 0);
+  try{ STATE = await call('api_setTrigger', TOKEN, t.fn, on, hr); renderHome(); toast(on ? 'تم تفعيل الموعد' : 'تم إيقاف الموعد'); }
+  catch(e){ toast(errMsg(e), 6000); loadHome(); }
+}
+async function delTrig(id){
+  if(!confirm('حذف الموعد ده؟')) return;
+  try{ STATE = await call('api_deleteTrigger', TOKEN, id); renderHome(); toast('تم الحذف'); }catch(e){ toast(errMsg(e), 6000); }
+}
+async function runAct(ji, ai){
+  const j = STATE.jobs[ji], a = j.actions[ai];
+  if (a.confirm && !confirm('تأكيد: ' + a.label + '؟')) return;
+  if (!a.confirm && j.dry===false && ai===0 && !confirm('وضع التجربة مقفول: القيود هتترحل فعلاً لـ QBO. متأكد؟')) return;
+  toast('جاري التشغيل: ' + a.label + ' ... (ممكن ياخد لحد 6 دقايق)', 0);
+  try{
+    const r = await call('api_runAction', TOKEN, j.id, a.fn);
+    toast(ST[r.status] + ' · ' + r.secs + ' ث');
+    openModal(j.name + ' — ' + a.label, `<span class="pill ${r.status}">${ST[r.status]}</span> ${esc(r.summary)}`, r.log);
+    loadHome();
+  }catch(e){ toast(errMsg(e), 8000); }
+}
+async function toggleDry(ji){
+  const j = STATE.jobs[ji];
+  if (j.dry && !confirm('إيقاف وضع التجربة يعني القيود هتترحل فعلاً لـ QBO. متأكد؟')) return;
+  const ch = {}; ch[j.dryKey] = j.dry ? 'false' : 'true';
+  try{ await call('api_saveSettings', TOKEN, ch); toast('تم'); loadHome(); }catch(e){ toast(errMsg(e), 6000); }
+}
+function copyText(ji){
+  const v = STATE.jobs[ji].webhook;
+  const ta = document.createElement('textarea'); ta.value=v; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); toast('تم النسخ'); }catch(e){ toast('انسخه يدوي'); }
+  ta.remove();
+}
+
+/* ---------- السجل ---------- */
+function jobLogs(id){ showTab('logs'); $('logJob').value = id; loadLogs(); }
+async function loadLogs(){
+  const sel = $('logJob');
+  if (!sel.options.length){
+    if(!STATE) STATE = await call('api_state', TOKEN);
+    sel.innerHTML = '<option value="">كل السكريبتات</option>' + STATE.jobs.map(j => `<option value="${j.id}">${esc(j.name)}</option>`).join('');
+  }
+  if (STATE && STATE.logUrl){ $('logSheet').href = STATE.logUrl; $('logSheet').textContent = 'فتح شيت السجل'; }
+  $('logsBody').innerHTML = '<div class="badge">جاري التحميل...</div>';
+  try{
+    const rows = await call('api_logs', TOKEN, sel.value, 200);
+    const names = {}; STATE.jobs.forEach(j => names[j.id] = j.name);
+    if (!rows.length){ $('logsBody').innerHTML = '<div class="card">لا يوجد سجل بعد.</div>'; return; }
+    $('logsBody').innerHTML = `<table><tr><th>الوقت</th><th>السكريبت</th><th>المصدر</th><th>الإجراء</th><th>الحالة</th><th>ث</th><th>الملخص</th></tr>` +
+      rows.map(r => `<tr class="click" onclick="showLog('${esc(r.id)}')"><td style="white-space:nowrap">${esc(r.time)}</td><td>${esc(names[r.job]||r.job)}</td><td>${esc(SRC[r.source]||r.source)}</td><td class="mono">${esc(r.action)}</td><td><span class="pill ${esc(r.status)}">${ST[r.status]||esc(r.status)}</span></td><td>${esc(r.secs)}</td><td style="word-break:break-word">${esc(r.summary)}</td></tr>`).join('') + `</table>`;
+  }catch(e){ $('logsBody').innerHTML = `<div class="err">${esc(errMsg(e))}</div>`; }
+}
+async function showLog(id){
+  try{
+    const r = await call('api_logDetail', TOKEN, id);
+    openModal(r.action + ' — ' + r.time, `<span class="pill ${esc(r.status)}">${ST[r.status]||esc(r.status)}</span> ${esc(SRC[r.source]||r.source)} · ${esc(r.secs)} ث · ${esc(r.summary)}`, r.log);
+  }catch(e){ toast(errMsg(e), 6000); }
+}
+function openModal(title, metaHtml, log){ $('mTitle').textContent=title; $('mMeta').innerHTML=metaHtml; $('mLog').textContent = log || '(لا يوجد لوج)'; $('modal').classList.remove('hidden'); }
+function closeModal(){ $('modal').classList.add('hidden'); }
+
+/* ---------- الإعدادات ---------- */
+async function loadSettings(){
+  $('settingsBody').innerHTML = '<div class="badge">جاري التحميل...</div>';
+  try{ SETTINGS = await call('api_settings', TOKEN); renderSettings(); }
+  catch(e){ $('settingsBody').innerHTML = `<div class="err">${esc(errMsg(e))}</div>`; }
+}
+function propInput(p){
+  const id = 'p-' + p.key, o = `data-k="${esc(p.key)}" data-t="${p.type}" data-o="${esc(p.value)}"`;
+  if (p.type==='secret') return `<input id="${id}" ${o} type="password" placeholder="${p.set?'•••••• محفوظ — اكتب لتغييره':'غير مضبوط'}" autocomplete="new-password">`;
+  if (p.type==='bool') return `<select id="${id}" ${o}><option value="" ${!p.value?'selected':''}>—</option><option value="true" ${p.value==='true'?'selected':''}>true (تجربة، بدون ترحيل)</option><option value="false" ${p.value==='false'?'selected':''}>false (ترحيل فعلي)</option></select>`;
+  if (p.type==='account' && ACCOUNTS){
+    let opts = `<option value="">—</option>`, found = !p.value;
+    ACCOUNTS.forEach(a => { const s = a.id===p.value; if(s) found=true; opts += `<option value="${esc(a.id)}" ${s?'selected':''}>${esc(a.name)} (${esc(a.id)})</option>`; });
+    if (!found) opts += `<option value="${esc(p.value)}" selected>غير موجود في QBO: ${esc(p.value)}</option>`;
+    return `<select id="${id}" ${o}>${opts}</select>`;
+  }
+  return `<input id="${id}" ${o} value="${esc(p.value)}" ${p.type==='date'?'placeholder="YYYY-MM-DD"':''} class="${/URL|SHOP|ID$|BODY|FIELD/.test(p.key)?'mono':''}">`;
+}
+function propRow(p, canDelete){
+  return `<div class="prop"><div class="k">${esc(p.key)}</div>${propInput(p)}<div>${canDelete?`<button class="sm danger" onclick="delProp('${esc(p.key)}')">حذف</button>`:(p.set?'':'<span class="badge">فارغ</span>')}</div></div>`;
+}
+function renderSettings(){
+  let h = '';
+  SETTINGS.sections.forEach(s => { h += `<h2>${esc(s.name)}</h2><div class="card">` + s.items.map(p => propRow(p,false)).join('') + `</div>`; });
+  h += `<h2>خصائص أخرى</h2><div class="card">` + (SETTINGS.others.map(p => propRow(p,true)).join('') || '<div class="badge">لا يوجد</div>');
+  h += `<div class="prop"><input id="newKey" class="mono" placeholder="NEW_KEY"><input id="newVal" placeholder="القيمة"><button class="sm" onclick="addProp()">إضافة</button></div></div>`;
+  h += `<div class="badge" style="margin-top:8px">بيانات الحالة الداخلية (المعالَج سابقاً، الطابور...): ${SETTINGS.stateCount} مفتاح — مش بتظهر هنا عشان ما تتعدلش بالغلط.</div>`;
+  $('settingsBody').innerHTML = h;
+}
+async function saveSettings(){
+  const ch = {};
+  document.querySelectorAll('#settingsBody [data-k]').forEach(el => {
+    const v = el.value.trim();
+    if (el.dataset.t==='secret'){ if(v) ch[el.dataset.k]=v; }
+    else if (v !== el.dataset.o) ch[el.dataset.k] = v;
+  });
+  const n = Object.keys(ch).length;
+  if (!n){ toast('مفيش تغييرات'); return; }
+  if (!confirm('حفظ ' + n + ' تغيير؟\n' + Object.keys(ch).join('\n'))) return;
+  try{ const r = await call('api_saveSettings', TOKEN, ch); toast('تم حفظ ' + r.saved); loadSettings(); }
+  catch(e){ toast(errMsg(e), 6000); }
+}
+async function addProp(){
+  const k = $('newKey').value.trim().toUpperCase(), v = $('newVal').value;
+  if (!k) return;
+  const ch = {}; ch[k] = v;
+  try{ await call('api_saveSettings', TOKEN, ch); toast('تمت الإضافة'); loadSettings(); }catch(e){ toast(errMsg(e), 6000); }
+}
+async function delProp(k){
+  if (!confirm('حذف ' + k + '؟')) return;
+  const ch = {}; ch[k] = null;
+  try{ await call('api_saveSettings', TOKEN, ch); toast('تم الحذف'); loadSettings(); }catch(e){ toast(errMsg(e), 6000); }
+}
+async function loadAccounts(){
+  toast('جاري تحميل الحسابات من QBO...', 0);
+  try{ ACCOUNTS = await call('api_qboAccounts', TOKEN); toast(ACCOUNTS.length + ' حساب'); if (SETTINGS) renderSettings(); }
+  catch(e){ toast(errMsg(e), 8000); }
+}
+async function testConn(){
+  $('connRes').textContent = 'جاري الاختبار...';
+  try{ const r = await call('api_testConnections', TOKEN); $('connRes').textContent = 'QBO: ' + r.qbo + '  |  Shopify: ' + r.shopify; }
+  catch(e){ $('connRes').textContent = errMsg(e); }
+}
+async function importProps(){
+  const txt = $('impText').value.trim(); if (!txt) return;
+  const over = $('impOver').checked;
+  if (!confirm(over ? 'استيراد مع استبدال القيم الموجودة؟' : 'استيراد (القيم الموجودة هتفضل زي ما هي)؟')) return;
+  try{
+    const r = await call('api_importProps', TOKEN, txt, over);
+    $('impRes').innerHTML = `تمت إضافة ${r.added}` + (r.overwritten.length ? ` · اتستبدل: <span class="mono">${esc(r.overwritten.join(', '))}</span>` : '') +
+      (r.skipped.length ? `<br>متخطّى لأنه موجود بقيمة مختلفة: <span class="mono">${esc(r.skipped.join(', '))}</span>` : '');
+    $('impText').value = ''; loadSettings();
+  }catch(e){ $('impRes').textContent = errMsg(e); }
+}
+
+/* ---------- الحساب ---------- */
+async function changePw(){
+  if ($('newPw').value !== $('newPw2').value){ toast('التأكيد مش مطابق'); return; }
+  try{ await call('api_changePassword', TOKEN, $('oldPw').value, $('newPw').value); showLogin('تم تغيير كلمة السر، ادخل بالجديدة'); }
+  catch(e){ toast(errMsg(e), 6000); }
+}
+
+TOKEN = store('qboTok');
+if (TOKEN) start(); else showLogin();
+</script>
+</body>
+</html>
