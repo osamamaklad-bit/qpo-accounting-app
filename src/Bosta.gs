@@ -33,7 +33,7 @@ function checkProps() {
   const need = ['BOSTA_WEBHOOK_TOKEN','BOSTA_API_KEY','BOSTA_AUTH_HEADER_NAME','BOSTA_FEES_URL',
     'BOSTA_PAYOUT_ORDERS_URL','BOSTA_PAYOUT_START_DATE','BOSTA_DRY_RUN','QBO_CLIENT_ID','QBO_CLIENT_SECRET',
     'QBO_REFRESH_TOKEN','QBO_REALM_ID','QBO_BOSTA_CLEARING_ACCOUNT_ID','QBO_BOSTA_FEES_ACCOUNT_ID',
-    'QBO_UNDEPOSITED_FUNDS_ACCOUNT_ID','EMAIL_TO'];
+    'QBO_UNDEPOSITED_FUNDS_ACCOUNT_ID'];
   need.forEach(k => console.log((P.getProperty(k) ? 'OK       ' : 'MISSING  ') + k));
 }
 
@@ -76,8 +76,6 @@ function syncBostaPayouts_() {
         results.push({ payout: po.transaction_id, qboId: res.JournalEntry.Id });
       } catch (err) {
         console.error(err);
-        const to = P.getProperty('EMAIL_TO');
-        if (to) MailApp.sendEmail(to, 'Bosta payout journal FAILED: ' + po.transaction_id, String(err));
         results.push({ payout: po.transaction_id, error: String(err) });
       }
     });

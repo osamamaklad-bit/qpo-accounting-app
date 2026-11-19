@@ -34,7 +34,7 @@ const GROUPS = [
 const JOBS = [
   {
     id: 'po', group: 'A', name: 'استلام أوامر الشراء ← Bill في QBO',
-    desc: 'يسحب التحويلات المستلمة من شوبيفاي، يبعت Excel بالإيميل، وينشئ Bill + قيد إعادة تصنيف.',
+    desc: 'يسحب التحويلات المستلمة من شوبيفاي، يكتب الأصناف في تاب PO، وينشئ Bill + قيد إعادة تصنيف.',
     actions: [
       { fn: 'dailyRun', label: 'تشغيل الآن' },
       { fn: 'testOne', label: 'معالجة آخر تحويل مستلم' },
@@ -46,7 +46,7 @@ const JOBS = [
   },
   {
     id: 'gads', group: 'A', name: 'Google Ads ← قيود QBO',
-    desc: 'يقرأ تاب GADS_TX: مصروف يومي، سداد، وأرصدة.',
+    desc: 'يقرأ تاب GADS_TX: مصروف يومي (بعد ما اليوم يخلص)، سداد، وأرصدة.',
     actions: [
       { fn: 'gadsSync50Dry', label: 'تجربة (بدون ترحيل)' },
       { fn: 'gadsSync50Post', label: 'ترحيل آخر 50 حركة' },
@@ -100,25 +100,22 @@ const JOBS = [
   },
   {
     id: 'products', group: 'B', name: 'مزامنة المنتجات شوبيفاي ← QBO',
-    desc: 'الاسم والـ SKU والسعر والتكلفة. الكمية لا تُزامن.',
-    webhook: 'pq',
+    desc: 'الاسم والـ SKU والسعر والتكلفة. الكمية لا تُزامن. بتشتغل مرة في اليوم، أو يدوي من الزرار.',
     actions: [
-      { fn: 'pqDryRun', label: 'تجربة مزامنة كاملة' },
-      { fn: 'pqSyncAll', label: 'مزامنة كاملة الآن', confirm: true },
-      { fn: 'pqProcessQueue', label: 'معالجة الطابور' },
-      { fn: 'pqClearQueue', label: 'مسح الطابور', confirm: true }
+      { fn: 'pqSyncAll', label: 'زامن المنتجات الآن (شوبيفاي ← QBO)', confirm: true },
+      { fn: 'pqDryRun', label: 'تجربة (بدون تعديل)' },
+      { fn: 'pqClearQueue', label: 'مسح الطابور القديم', confirm: true }
     ],
     triggers: [
-      { fn: 'cron_pqQueue', label: 'طابور الويب هوك', type: 'minutes', every: 1 },
       { fn: 'cron_pqDaily', label: 'مزامنة كاملة يومية', type: 'daily', hour: 3 }
     ],
-    props: ['WEBHOOK_KEY', 'QBO_INCOME_ACCOUNT_ID', 'QBO_EXPENSE_ACCOUNT_ID', 'QBO_ASSET_ACCOUNT_ID',
+    props: ['QBO_INCOME_ACCOUNT_ID', 'QBO_EXPENSE_ACCOUNT_ID', 'QBO_ASSET_ACCOUNT_ID',
       'QBO_INV_START_DATE', 'SHEET_ID']
   }
 ];
 
 const SHARED_PROPS = ['QBO_CLIENT_ID', 'QBO_CLIENT_SECRET', 'QBO_REFRESH_TOKEN', 'QBO_REALM_ID',
-  'QBO_UNDEPOSITED_FUNDS_ACCOUNT_ID', 'SHOP', 'CLIENT_ID', 'CLIENT_SECRET', 'EMAIL_TO', 'WEBAPP_URL'];
+  'QBO_UNDEPOSITED_FUNDS_ACCOUNT_ID', 'SHOP', 'CLIENT_ID', 'CLIENT_SECRET', 'WEBAPP_URL'];
 
 const SECRET_KEYS = ['QBO_CLIENT_SECRET', 'QBO_REFRESH_TOKEN', 'CLIENT_SECRET', 'CLIENT_SECRET_QBO', 'META_TOKEN',
   'BOSTA_API_KEY', 'BOSTA_WEBHOOK_TOKEN', 'KASHIER_API_KEY', 'KASHIER_LOGIN_BODY', 'KASHIER_TEST_KEY', 'WEBHOOK_KEY'];
@@ -131,14 +128,17 @@ function cron_meta()    { cronRun_('meta', 'metaChargesPost'); }
 function cron_bosta()   { cronRun_('bosta', 'dailySync'); }
 function cron_kashier() { cronRun_('kashier', 'kashierPayoutDaily'); }
 function cron_pqDaily() { cronRun_('products', 'pqSyncAll'); }
+// اتلغى: المنتجات بقت بتتزامن مرة في اليوم أو يدوي.
+// لو الموعد القديم (كل دقيقة) لسه موجود، أول ما يشتغل بيمسح نفسه.
 function cron_pqQueue() {
-  if (!pqQueueKeys_().length) return;            // كل دقيقة: ما يسجلش لو الطابور فاضي
-  cronRun_('products', 'pqProcessQueue');
+  ScriptApp.getProjectTriggers().forEach(function (x) {
+    if (x.getHandlerFunction() === 'cron_pqQueue') ScriptApp.deleteTrigger(x);
+  });
 }
 
+// الخطأ بيتسجل في السجل بس. مش بنرمي exception عشان جوجل ما يبعتش إيميل فشل.
 function cronRun_(jobId, fn) {
-  const r = runLogged_(jobId, 'schedule', fn, function () { return globalThis[fn](); });
-  if (r.status === 'error') throw new Error(r.error);
+  runLogged_(jobId, 'schedule', fn, function () { return globalThis[fn](); });
 }
 
 // ---------- Wrappers ----------
@@ -167,7 +167,7 @@ function doGet(e) {
 function doPost(e) {
   const p = (e && e.parameter) || {};
   if (p.src === 'ui') return uiApi_(e);             // الواجهة على GitHub Pages
-  if (p.src === 'pq') return pqHandleWebhook_(e);   // شوبيفاي محتاج رد في أقل من 5 ثواني
+  if (p.src === 'pq') return uiJson_({ ok: true, ignored: 'products sync daily or manually' });   // ويب هوك شوبيفاي القديم
   const r = runLogged_('bosta', 'webhook', 'handleBostaWebhook_', function () { return handleBostaWebhook_(e); });
   return r.result || json_({ ok: false, error: r.error });
 }
@@ -235,12 +235,6 @@ function runLogged_(jobId, source, action, fn) {
   PropertiesService.getScriptProperties().setProperty('APP_LAST_' + jobId,
     JSON.stringify({ time: time, status: status, action: action, source: source, summary: summary.substring(0, 200) }));
 
-  if (status === 'error' && source !== 'manual') {
-    const to = PropertiesService.getScriptProperties().getProperty('EMAIL_TO');
-    if (to) {
-      try { MailApp.sendEmail(to, 'QBO app FAILED: ' + jobId + ' / ' + action, error); } catch (x) {}
-    }
-  }
 
   return { id: id, status: status, error: error, summary: summary, secs: secs,
     log: text.slice(-20000), result: result };
@@ -397,10 +391,6 @@ function webhookUrl_(kind) {
   if (kind === 'bosta') {
     const t = P.getProperty('BOSTA_WEBHOOK_TOKEN');
     return t ? base + '?token=' + encodeURIComponent(t) : '';
-  }
-  if (kind === 'pq') {
-    const k = P.getProperty('WEBHOOK_KEY');
-    return k ? base + '?key=' + encodeURIComponent(k) + '&src=pq' : '';
   }
   return '';
 }

@@ -21,16 +21,9 @@ function kashierPayoutRun() {
   return r;
 }
 
-// Used by the daily trigger. Emails you if the whole sync fails.
+// Used by the daily trigger (errors show up in the dashboard log)
 function kashierPayoutDaily() {
-  try {
-    return kashierSyncPayouts_();
-  } catch (err) {
-    console.error(err);
-    const to = kashierProp_('EMAIL_TO');
-    if (to) MailApp.sendEmail(to, 'Kashier payout sync FAILED', String(err));
-    throw err;
-  }
+  return kashierSyncPayouts_();
 }
 
 // Lists which properties are set (no values printed)
@@ -38,7 +31,7 @@ function checkKashierProps() {
   const P = PropertiesService.getScriptProperties();
   const need = ['KASHIER_API_KEY', 'KASHIER_API_URL', 'KASHIER_SETTLEMENTS_URL', 'KASHIER_PAYMENTS_URL',
     'KASHIER_FEES_ACC_ID', 'KASHIER_QBO_CLEARING_ACC_ID', 'QBO_UNDEPOSITED_FUNDS_ACCOUNT_ID',
-    'KASHIER_PAYOUT_START_DATE', 'KASHIER_PAYOUT_DRY_RUN', 'EMAIL_TO'];
+    'KASHIER_PAYOUT_START_DATE', 'KASHIER_PAYOUT_DRY_RUN'];
   const optional = ['KASHIER_AUTH_HEADER', 'KASHIER_LOGIN_URL', 'KASHIER_LOGIN_BODY', 'KASHIER_TOKEN_FIELD'];
   need.forEach(k => console.log((P.getProperty(k) ? 'OK       ' : 'MISSING  ') + k));
   optional.forEach(k => console.log((P.getProperty(k) ? 'OK       ' : 'not set  ') + k + ' (optional)'));
@@ -237,8 +230,6 @@ function kashierSyncPayouts_() {
         results.push({ payout: po.id, qboId: res.JournalEntry.Id, settlements: sts.length, lines: je.Line.length });
       } catch (err) {
         console.error(err);
-        const to = P.getProperty('EMAIL_TO');
-        if (to) MailApp.sendEmail(to, 'Kashier payout journal FAILED: ' + po.id, String(err));
         results.push({ payout: po.id, error: String(err) });
       }
     });

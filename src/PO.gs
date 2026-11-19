@@ -10,13 +10,6 @@ const SHOPIFY_API_VERSION = '2026-07';
 const PO_API_VERSION = '2026-10';
 const TIMEZONE = 'Africa/Cairo';
 
-// الإيميل من Script Property: EMAIL_TO
-function poEmailTo_() {
-  const to = PropertiesService.getScriptProperties().getProperty('EMAIL_TO');
-  if (!to) throw new Error('Missing script property: EMAIL_TO');
-  return to;
-}
-
 // ===== DAILY JOB =====
 function dailyRun() {
   const props = PropertiesService.getScriptProperties();
@@ -65,11 +58,6 @@ function dailyRun() {
     } catch (err) {
       Logger.log('Failed ' + t.name + ': ' + err);
       failed.push({ transfer: t.name, error: String(err) });
-      MailApp.sendEmail(
-        poEmailTo_(),
-        'PO automation FAILED: ' + t.name,
-        String(err)
-      );
     }
   });
 
@@ -101,7 +89,6 @@ function processTransfer_(props, token, id, ref, supplierName) {
   sh.getRange(1, 1, rows.length, 5).setValues(rows);
   SpreadsheetApp.flush();
 
-  sendXlsx_(ss, sh, ref);
   createQboBill_(props, items, ref, supplierName);
 }
 
@@ -422,26 +409,6 @@ function getTransferItems_(props, token, id) {
   return Object.values(map).filter(item => item.qty > 0);
 }
 
-// ===== EMAIL EXCEL =====
-function sendXlsx_(ss, sh, name) {
-  const url =
-    'https://docs.google.com/spreadsheets/d/' +
-    ss.getId() + '/export?format=xlsx&gid=' + sh.getSheetId();
-
-  const blob = UrlFetchApp.fetch(url, {
-    headers: {
-      Authorization: 'Bearer ' + ScriptApp.getOAuthToken()
-    }
-  }).getBlob().setName('PO-' + name + '.xlsx');
-
-  MailApp.sendEmail({
-    to: poEmailTo_(),
-    subject: 'PO received: ' + name,
-    body: 'Received items attached.',
-    attachments: [blob]
-  });
-}
-
 // ===== QUICKBOOKS QUERY =====
 function qboQuery_(props, token, query) {
   const url =
@@ -535,7 +502,7 @@ function createQboBill_(props, items, ref, supplierName) {
 
     lines.push({
       DetailType: 'ItemBasedExpenseLineDetail',
-      Amount: item.qty * item.cost,
+      Amount: Math.round(item.qty * item.cost * 100) / 100,   // QBO wants 2 decimals
       ItemBasedExpenseLineDetail: {
         ItemRef: { value: result.Item[0].Id },
         Qty: item.qty,

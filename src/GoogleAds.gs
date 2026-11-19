@@ -15,6 +15,7 @@ function googleAdsDailyRun() {
     if (!day) { Logger.log(' -> skipped: empty date'); return; }
     if (!amt) { Logger.log(' -> skipped: amount is 0 or not a number'); return; }
     if (done.includes(day)) { Logger.log(' -> skipped: already processed'); return; }
+    if (day >= Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd')) { Logger.log(' -> skipped: day not finished yet'); return; }
     const desc = 'Google Ads spend ' + day + ' (' + r[2] + ')';
     const je = {
       DocNumber: 'GADS-' + day, TxnDate: day, PrivateNote: desc,
@@ -85,7 +86,10 @@ function gadsSync50(dryRun) {
       byDay[day] = (byDay[day] || 0) + cost;
     }
   });
+  // مصروف اليوم بيترحّل بعد ما اليوم يخلص بس (بتوقيت القاهرة)، عشان ما يترحّلش ناقص
+  const today = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd');
   Object.keys(byDay).forEach(function (day) {
+    if (day >= today) { Logger.log(day + ' | EXP | ' + byDay[day] + ' | WAIT: day not finished yet'); return; }
     events.push({kind: 'EXP', day: day, amt: Math.round(byDay[day] * 100) / 100, signed: 1, key: day, text: 'spend'});
   });
 
