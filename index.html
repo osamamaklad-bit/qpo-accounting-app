@@ -119,6 +119,12 @@ input[type=checkbox]{accent-color:var(--red);width:16px;height:16px}
         <span id="connRes" class="badge"></span>
       </div>
       <div id="settingsBody"></div>
+      <h2>مسح الخصائص غير المطلوبة</h2>
+      <div class="card">
+        <div class="desc">بيمسح أي خاصية مش مستخدمة في الإعدادات اللي فوق (زي EMAIL_TO والطابور القديم وبقايا المشاريع القديمة). اللي اترحّل قبل كده وكلمة السر والسجل مش بيتمسحوا.</div>
+        <div class="row"><button class="danger" onclick="cleanupProps()">عرض ومسح الخصائص غير المطلوبة</button></div>
+        <div id="cleanRes" class="badge"></div>
+      </div>
       <h2>استيراد الإعدادات من المشاريع القديمة</h2>
       <div class="card">
         <div class="desc">الصق ناتج exportAllProps (JSON) أو رابط ملف Drive اللي طلع منه.</div>
@@ -367,6 +373,18 @@ async function testConn(){
   $('connRes').textContent = 'جاري الاختبار...';
   try{ const r = await call('api_testConnections', TOKEN); $('connRes').textContent = 'QBO: ' + r.qbo + '  |  Shopify: ' + r.shopify; }
   catch(e){ $('connRes').textContent = errMsg(e); }
+}
+async function cleanupProps(){
+  $('cleanRes').textContent = 'جاري الفحص...';
+  try{
+    const r = await call('api_cleanupProps', TOKEN, false);
+    if (!r.keys.length){ $('cleanRes').textContent = 'مفيش خصائص غير مطلوبة.'; return; }
+    $('cleanRes').innerHTML = 'غير مطلوبة (' + r.keys.length + '): <span class="mono">' + esc(r.keys.join(', ')) + '</span>';
+    if (!confirm('مسح ' + r.keys.length + ' خاصية؟\n\n' + r.keys.join('\n'))) return;
+    const d = await call('api_cleanupProps', TOKEN, true);
+    $('cleanRes').innerHTML = 'اتمسح ' + d.keys.length + ': <span class="mono">' + esc(d.keys.join(', ')) + '</span>';
+    loadSettings();
+  }catch(e){ $('cleanRes').textContent = errMsg(e); }
 }
 async function importProps(){
   const txt = $('impText').value.trim(); if (!txt) return;

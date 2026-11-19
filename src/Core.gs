@@ -176,7 +176,7 @@ function doPost(e) {
 // كل دالة هنا بتتحقق من التوكن بنفسها (auth_) ما عدا الدخول والخروج.
 const UI_API = ['api_login', 'api_logout', 'api_changePassword', 'api_state', 'api_runAction', 'api_setTrigger',
   'api_deleteTrigger', 'api_logs', 'api_logDetail', 'api_settings', 'api_saveSettings', 'api_qboAccounts',
-  'api_testConnections', 'api_importProps'];
+  'api_testConnections', 'api_importProps', 'api_cleanupProps'];
 
 function uiApi_(e) {
   let out;
@@ -580,6 +580,28 @@ function api_testConnections(t) {
     out.shopify = 'متصل: ' + pqShopify_('{ shop { name } }').data.shop.name;
   } catch (err) { out.shopify = 'خطأ: ' + err; }
   return out;
+}
+
+// ---------- مسح الخصائص غير المطلوبة ----------
+// بيتمسح أي مفتاح مش في الإعدادات (المشتركة + إعدادات كل سكريبت) ومش من بيانات الحالة.
+// بيانات الحالة (اللي اترحّل قبل كده، الجلسات، السجل) عمرها ما بتتمسح عشان القيود ما تتكررش.
+const STATE_KEYS = ['PROCESSED', 'GADS_DAYS_PROCESSED', 'GADS_TX_PROCESSED', 'META_CHARGES_PROCESSED',
+  'META_INVOICES_PROCESSED'];
+
+function keepProp_(k) {
+  if (/^APP_/.test(k)) return true;                                   // كلمة السر والجلسات والسجل والمواعيد
+  if (STATE_KEYS.indexOf(k) > -1) return true;
+  if (/^BOSTA_PAYOUT_/.test(k) || /^KASHIER_PAYOUT_/.test(k)) return true;   // تحويلات اترحّلت + إعداداتها
+  if (SHARED_PROPS.indexOf(k) > -1) return true;
+  return JOBS.some(function (j) { return j.props.indexOf(k) > -1; });
+}
+
+function api_cleanupProps(t, apply) {
+  auth_(t);
+  const P = PropertiesService.getScriptProperties();
+  const extra = Object.keys(P.getProperties()).filter(function (k) { return !keepProp_(k); }).sort();
+  if (apply) extra.forEach(function (k) { P.deleteProperty(k); });
+  return { keys: extra, deleted: !!apply };
 }
 
 // استيراد الإعدادات من المشاريع القديمة (JSON من exportAllProps)
