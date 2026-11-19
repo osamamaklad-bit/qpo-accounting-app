@@ -157,7 +157,7 @@ function pqClearQueue() {
 
 function doGet(e) {
   // اختبار سريع: افتح رابط /exec?ping=1 ← لو ظهر {"ok":true,"ui":true} يبقى النسخة الجديدة متنشرة
-  if (e && e.parameter && e.parameter.ping) return json_({ ok: true, ui: true, time: new Date().toISOString() });
+  if (e && e.parameter && e.parameter.ping) return uiJson_({ ok: true, ui: true, time: new Date().toISOString() });
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle(APP.TITLE)
     .setFaviconUrl(APP.FAVICON)
@@ -189,7 +189,12 @@ function uiApi_(e) {
   } catch (err) {
     out = { ok: false, error: String((err && err.message) || err) };
   }
-  return json_(out);
+  return uiJson_(out);
+}
+
+// مستقلة عن json_ اللي في Bosta.gs عشان الواجهة تشتغل حتى لو الملف ده مش موجود
+function uiJson_(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
 }
 
 /* ============================================================
