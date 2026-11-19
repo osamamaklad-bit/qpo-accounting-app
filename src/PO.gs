@@ -14,6 +14,12 @@ const TIMEZONE = 'Africa/Cairo';
 function dailyRun() {
   const props = PropertiesService.getScriptProperties();
 
+  // قبل GO_LIVE_DATE: أي تحويل اتستلم بيتعلّم إنه اتعالج من غير Bill، عشان بعد البدء يتعمل Bill للجديد بس
+  if (beforeGoLive_(todayCairo_())) {
+    markExistingAsProcessed();
+    return { ok: true, beforeGoLive: goLive_(), note: 'قبل تاريخ البدء: التحويلات المستلمة اتعلّمت إنها اتعالجت من غير Bill' };
+  }
+
   if (!props.getProperty('PROCESSED')) {
     throw new Error('Run markExistingAsProcessed() once first.');
   }
@@ -100,7 +106,10 @@ function markExistingAsProcessed() {
   const ids = getReceivedTransfers_(props, token)
     .map(t => t.id);
 
-  props.setProperty('PROCESSED', JSON.stringify(ids));
+  // بنضيف على اللي موجود (مش بنستبدل) عشان تحويل اتعالج قبل كده ما يرجعش تاني
+  const old = JSON.parse(props.getProperty('PROCESSED') || '[]');
+  ids.forEach(function (id) { if (old.indexOf(id) === -1) old.push(id); });
+  props.setProperty('PROCESSED', JSON.stringify(old.slice(-300)));
 
   Logger.log(
     'Marked ' + ids.length + ' existing transfers as processed.'

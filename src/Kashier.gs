@@ -54,7 +54,7 @@ function kashierStartDate_() {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) {
     throw new Error('KASHIER_PAYOUT_START_DATE must look like 2026-10-04, got: [' + s + ']');
   }
-  return s;
+  return laterDate_(s, goLive_());   // مش قبل GO_LIVE_DATE
 }
 
 function kashierShiftDate_(ymd, days) {

@@ -117,12 +117,23 @@ const JOBS = [
   }
 ];
 
-const SHARED_PROPS = ['QBO_CLIENT_ID', 'QBO_CLIENT_SECRET', 'QBO_REFRESH_TOKEN', 'QBO_REALM_ID',
+const SHARED_PROPS = ['GO_LIVE_DATE', 'QBO_CLIENT_ID', 'QBO_CLIENT_SECRET', 'QBO_REFRESH_TOKEN', 'QBO_REALM_ID',
   'QBO_UNDEPOSITED_FUNDS_ACCOUNT_ID', 'SHOP', 'CLIENT_ID', 'CLIENT_SECRET', 'WEBAPP_URL'];
 
 const SECRET_KEYS = ['QBO_CLIENT_SECRET', 'QBO_REFRESH_TOKEN', 'CLIENT_SECRET', 'CLIENT_SECRET_QBO', 'META_TOKEN',
   'BOSTA_API_KEY', 'BOSTA_WEBHOOK_TOKEN', 'KASHIER_API_KEY', 'KASHIER_LOGIN_BODY', 'KASHIER_TEST_KEY', 'WEBHOOK_KEY'];
 const BOOL_KEYS = ['BOSTA_DRY_RUN', 'KASHIER_PAYOUT_DRY_RUN'];
+
+// ---------- تاريخ البدء الفعلي ----------
+// GO_LIVE_DATE (yyyy-MM-dd): أي حركة قبله مش بتترحّل في أي سكريبت. فاضي = مفيش حد.
+function goLive_() {
+  const v = String(PropertiesService.getScriptProperties().getProperty('GO_LIVE_DATE') || '').trim();
+  if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new Error('GO_LIVE_DATE لازم يكون بالشكل 2027-01-01، القيمة الحالية: ' + v);
+  return v;
+}
+function todayCairo_() { return Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd'); }
+function beforeGoLive_(day) { const g = goLive_(); return !!g && String(day) < g; }
+function laterDate_(a, b) { return !b ? a : (a > b ? a : b); }
 
 // ---------- المواعيد المجدولة (كلها بتسجل في السجل) ----------
 function cron_po()      { cronRun_('po', 'dailyRun'); }

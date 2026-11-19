@@ -43,7 +43,7 @@ function syncBostaPayouts_() {
   const P = PropertiesService.getScriptProperties();
   // نفس السكريبت مش بيشتغل مرتين مع بعض: القفل في runLogged_ (Core.gs)، فمفيش قفل هنا يعطّل باقي السكريبتات
   try {
-    const start = P.getProperty('BOSTA_PAYOUT_START_DATE') || '9999-12-31';
+    const start = laterDate_(P.getProperty('BOSTA_PAYOUT_START_DATE') || '9999-12-31', goLive_());   // مش قبل GO_LIVE_DATE
     const dry = String(P.getProperty('BOSTA_DRY_RUN') || '').trim().toLowerCase() !== 'false';   // أي حاجة غير false = تجربة
     const tx = fetchBostaTransactions_(3); // newest first
 

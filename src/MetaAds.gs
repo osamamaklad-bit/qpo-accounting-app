@@ -14,6 +14,7 @@ function metaChargesLast50(dryRun) {
     const amt = Number(t.provider_amount && t.provider_amount.amount);
     if (!amt) return;
     const day = Utilities.formatDate(new Date(t.time), 'Africa/Cairo', 'yyyy-MM-dd');
+    if (beforeGoLive_(day)) { Logger.log(day + ' | ' + t.id + ' | before GO_LIVE_DATE, skipped'); return; }
     const desc = 'Meta Ads charge ' + t.id;
     if (dryRun) { Logger.log(day + ' | ' + amt + ' | ' + t.id + ' | ' + t.status); return; }
 
@@ -75,6 +76,7 @@ function metaInvoices(dryRun) {
     Logger.log([inv.invoice_id, inv.invoice_date, inv.payment_status, inv.type, amt].join(' | '));
     if (dryRun || done.includes(inv.id)) return;
     if (inv.payment_status !== 'PAID' || inv.type !== 'INVOICE' || !amt) return;
+    if (beforeGoLive_(inv.invoice_date)) { Logger.log(inv.invoice_id + ' before GO_LIVE_DATE, skipped'); return; }
 
     const desc = 'Meta Ads invoice ' + inv.invoice_id;
     const je = {

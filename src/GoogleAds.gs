@@ -15,6 +15,7 @@ function googleAdsDailyRun() {
     if (!day) { Logger.log(' -> skipped: empty date'); return; }
     if (!amt) { Logger.log(' -> skipped: amount is 0 or not a number'); return; }
     if (done.includes(day)) { Logger.log(' -> skipped: already processed'); return; }
+    if (beforeGoLive_(day)) { Logger.log(' -> skipped: before GO_LIVE_DATE'); return; }
     if (day >= Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy-MM-dd')) { Logger.log(' -> skipped: day not finished yet'); return; }
     const desc = 'Google Ads spend ' + day + ' (' + r[2] + ')';
     const je = {
@@ -100,7 +101,11 @@ function gadsSync50(dryRun) {
 
   // 2) أحدث 50 حركة
   events.sort(function (a, b) { return a.day < b.day ? 1 : a.day > b.day ? -1 : 0; });
-  const list = events.slice(0, 50);
+  const list = events.filter(function (e) {
+    if (!beforeGoLive_(e.day)) return true;
+    return false;                                   // قبل GO_LIVE_DATE: مش بيترحّل
+  }).slice(0, 50);
+  if (goLive_()) Logger.log('GO_LIVE_DATE ' + goLive_() + ': الحركات قبله مش بتترحّل');
 
   const doneDays = JSON.parse(p.getProperty('GADS_DAYS_PROCESSED') || '[]');
   const doneTx = JSON.parse(p.getProperty('GADS_TX_PROCESSED') || '[]');
