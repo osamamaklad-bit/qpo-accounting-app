@@ -31,3 +31,18 @@
 - Meta: الموعد اليومي بيرحّل الـ Charges بس؛ الفواتير يدوي عشان ما يتكررش نفس المبلغ.
 - حسابات المخزون في PO بقت إعدادات: `QBO_INVENTORY_ASSET_ACCOUNT_ID` (افتراضي 121) و `QBO_INVENTORY_OFFSET_ACCOUNT_ID` (افتراضي 315).
 - مفيش أي أسرار في الكود؛ كلها في Script Properties.
+
+## النشر التلقائي من GitHub
+
+أي تعديل في `src/` على فرع `main` بيترفع لـ Apps Script وبيحدّث نفس رابط الـ Web app (`.github/workflows/deploy.yml`).
+تقدر كمان تشغّله يدوي من Actions ← Deploy to Apps Script ← Run workflow.
+
+إعداد مرة واحدة:
+1. فعّل Google Apps Script API من https://script.google.com/home/usersettings
+2. على جهازك: `npm i -g @google/clasp@2.4.2` ثم `clasp login` ← هيعمل ملف `~/.clasprc.json`.
+3. في الريبو: Settings ← Secrets and variables ← Actions ← New repository secret:
+   - `CLASPRC_JSON` = محتوى ملف `~/.clasprc.json` كامل
+   - `SCRIPT_ID` = من Apps Script ← Project Settings ← Script ID
+   - `DEPLOYMENT_ID` (اختياري) = الجزء اللي بين `/s/` و `/exec` في رابط الـ Web app
+
+⚠️ `clasp push` بيخلي ملفات مشروع Apps Script مطابقة لـ `src/` بالظبط: أي ملف في المحرر مش موجود هنا هيتمسح.
