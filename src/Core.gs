@@ -30,15 +30,17 @@ const GROUPS = [
 
 // ---------- كل السكريبتات ----------
 // actions: الدوال المسموح تشغيلها من الواجهة
+//   post: بيرحّل لـ QBO فعلاً، فالواجهة بتطلب تأكيد (إلا لو السكريبت في وضع التجربة)
+//   confirm: بيطلب تأكيد دايماً
 // triggers: المواعيد اللي الواجهة بتديرها (كل تشغيل مجدول بيتسجل في السجل)
 const JOBS = [
   {
     id: 'po', group: 'A', name: 'استلام أوامر الشراء ← Bill في QBO',
     desc: 'يسحب التحويلات المستلمة من شوبيفاي، يكتب الأصناف في تاب PO، وينشئ Bill + قيد إعادة تصنيف.',
     actions: [
-      { fn: 'dailyRun', label: 'تشغيل الآن' },
-      { fn: 'testOne', label: 'معالجة آخر تحويل مستلم' },
-      { fn: 'reclassExistingBills', label: 'إعادة تصنيف الفواتير الحالية', confirm: true },
+      { fn: 'dailyRun', label: 'تشغيل الآن', post: true },
+      { fn: 'testOne', label: 'معالجة آخر تحويل مستلم', post: true },
+      { fn: 'reclassExistingBills', label: 'إعادة تصنيف الفواتير الحالية', post: true },
       { fn: 'markExistingAsProcessed', label: 'اعتبار كل التحويلات الحالية مُعالجة', confirm: true }
     ],
     triggers: [{ fn: 'cron_po', label: 'يومياً', type: 'daily', hour: 15 }],
@@ -49,8 +51,8 @@ const JOBS = [
     desc: 'يقرأ تاب GADS_TX: مصروف يومي (بعد ما اليوم يخلص)، سداد، وأرصدة.',
     actions: [
       { fn: 'gadsSync50Dry', label: 'تجربة (بدون ترحيل)' },
-      { fn: 'gadsSync50Post', label: 'ترحيل آخر 50 حركة' },
-      { fn: 'googleAdsDailyRun', label: 'ترحيل من تاب GADS (القديم)', confirm: true }
+      { fn: 'gadsSync50Post', label: 'ترحيل آخر 50 حركة', post: true },
+      { fn: 'googleAdsDailyRun', label: 'ترحيل من تاب GADS (القديم)', post: true }
     ],
     triggers: [{ fn: 'cron_gads', label: 'يومياً', type: 'daily', hour: 10 }],
     props: ['SPREAD_SHEET_ID2', 'QBO_GADS_EXPENSE_ACCOUNT_ID', 'QBO_GADS_CLEARING_ACCOUNT_ID', 'QBO_META_PAYMENT_ACCOUNT_ID']
@@ -60,9 +62,9 @@ const JOBS = [
     desc: 'المجدول يرحّل الـ Charges فقط. الفواتير يدوي عشان ما يتكررش نفس المبلغ مرتين.',
     actions: [
       { fn: 'metaChargesDryRun', label: 'تجربة Charges' },
-      { fn: 'metaChargesPost', label: 'ترحيل Charges' },
+      { fn: 'metaChargesPost', label: 'ترحيل Charges', post: true },
       { fn: 'metaInvoicesDry', label: 'تجربة الفواتير' },
-      { fn: 'metaInvoicesPost', label: 'ترحيل الفواتير', confirm: true },
+      { fn: 'metaInvoicesPost', label: 'ترحيل الفواتير', post: true },
       { fn: 'metaFindBusiness', label: 'معرفة Business ID' }
     ],
     triggers: [{ fn: 'cron_meta', label: 'يومياً (Charges)', type: 'daily', hour: 11 }],
@@ -73,7 +75,7 @@ const JOBS = [
     desc: 'قيد لكل Cash-out: تحصيل كل أوردر، رسوم بوسطة، والكريدت.',
     dryKey: 'BOSTA_DRY_RUN', webhook: 'bosta',
     actions: [
-      { fn: 'runSync', label: 'تشغيل الآن' },
+      { fn: 'runSync', label: 'تشغيل الآن', post: true },
       { fn: 'checkProps', label: 'فحص الإعدادات' }
     ],
     triggers: [{ fn: 'cron_bosta', label: 'يومياً', type: 'daily', hour: 12 }],
@@ -86,7 +88,7 @@ const JOBS = [
     desc: 'قيد لكل Payout مفصّل بالمدفوعات والرسوم لكل Settlement.',
     dryKey: 'KASHIER_PAYOUT_DRY_RUN',
     actions: [
-      { fn: 'kashierPayoutRun', label: 'تشغيل الآن' },
+      { fn: 'kashierPayoutRun', label: 'تشغيل الآن', post: true },
       { fn: 'checkKashierProps', label: 'فحص الإعدادات' },
       { fn: 'kashierWhyEmpty', label: 'ليه مفيش قيود؟' },
       { fn: 'kashierListBooked', label: 'التحويلات المسجلة' },
@@ -100,7 +102,7 @@ const JOBS = [
   },
   {
     id: 'products', group: 'B', name: 'مزامنة المنتجات شوبيفاي ← QBO',
-    desc: 'الاسم والـ SKU والسعر والتكلفة. الكمية لا تُزامن. بتشتغل مرة في اليوم، أو يدوي من الزرار.',
+    desc: 'الاسم والـ SKU والسعر والتكلفة. الكمية لا تُزامن. بتشتغل مرة في اليوم، أو يدوي من الزرار. لو المنتجات كتير ووقفت قبل ما تخلص، دوس الزرار تاني وهتكمّل.',
     actions: [
       { fn: 'pqSyncAll', label: 'زامن المنتجات الآن (شوبيفاي ← QBO)', confirm: true },
       { fn: 'pqDryRun', label: 'تجربة (بدون تعديل)' },
@@ -143,7 +145,13 @@ function cronRun_(jobId, fn) {
 
 // ---------- Wrappers ----------
 function metaChargesPost()  { return metaChargesLast50(false); }
-function metaInvoicesPost() { return metaInvoices(false); }
+// فواتير ميتا وCharges بيمثلوا نفس الفلوس: ممنوع ترحيل الفواتير وموعد الـ Charges شغال
+function metaInvoicesPost() {
+  if (ScriptApp.getProjectTriggers().some(function (x) { return x.getHandlerFunction() === 'cron_meta'; })) {
+    throw new Error('موعد Charges ميتا شغال، فترحيل الفواتير هيكرر نفس المبالغ. اقفل الموعد الأول لو عايز ترحّل بالفواتير.');
+  }
+  return metaInvoices(false);
+}
 function pqClearQueue() {
   const P = PropertiesService.getScriptProperties();
   const keys = pqQueueKeys_();
@@ -169,7 +177,7 @@ function doPost(e) {
   if (p.src === 'ui') return uiApi_(e);             // الواجهة على GitHub Pages
   if (p.src === 'pq') return uiJson_({ ok: true, ignored: 'products sync daily or manually' });   // ويب هوك شوبيفاي القديم
   const r = runLogged_('bosta', 'webhook', 'handleBostaWebhook_', function () { return handleBostaWebhook_(e); });
-  return r.result || json_({ ok: false, error: r.error });
+  return r.result || uiJson_({ ok: false, error: r.error || r.summary });
 }
 
 // الواجهة اللي برة Apps Script (GitHub Pages) بتبعت POST بـ {fn, args}
@@ -201,43 +209,79 @@ function uiJson_(o) {
    تسجيل التشغيل
    ============================================================ */
 
-function runLogged_(jobId, source, action, fn) {
-  const buf = [];
-  const t0 = Date.now();
-  const restore = hookConsole_(buf);
-  try { Logger.clear(); } catch (x) {}
+function nowStr_(d) { return Utilities.formatDate(d || new Date(), APP.TZ, 'yyyy-MM-dd HH:mm:ss'); }
 
-  let result, error = '';
+// تشغيل "شغال" من أكتر من 7 دقايق يبقى جوجل وقفه (الحد 6 دقايق)
+function isStale_(time) { return String(time) < nowStr_(new Date(Date.now() - 7 * 60000)); }
+
+// قفل لكل سكريبت: يمنع نفس السكريبت يشتغل مرتين في نفس الوقت (زرار اتداس مرتين، أو يدوي + موعد)
+function acquireJob_(jobId) {
+  const L = LockService.getUserLock();
+  if (!L.tryLock(15000)) return false;
   try {
-    result = fn();
-  } catch (err) {
-    error = String((err && err.message) || err);
-    buf.push('ERROR: ' + ((err && err.stack) || err));
+    const c = CacheService.getScriptCache();
+    if (c.get('APP_RUN_' + jobId)) return false;
+    c.put('APP_RUN_' + jobId, String(Date.now()), 420);   // بيتفك لوحده بعد 7 دقايق لو التشغيل اتقطع
+    return true;
   } finally {
-    restore();
+    L.releaseLock();
+  }
+}
+function releaseJob_(jobId) { CacheService.getScriptCache().remove('APP_RUN_' + jobId); }
+
+function runLogged_(jobId, source, action, fn) {
+  const P = PropertiesService.getScriptProperties();
+  const id = 'r' + Utilities.getUuid().replace(/-/g, '').substring(0, 9);
+  const startTime = nowStr_();
+
+  if (!acquireJob_(jobId)) {
+    const msg = 'اتخطّى: السكريبت ده شغال بالفعل. استنى لما يخلص وجرّب تاني.';
+    writeLog_([id, startTime, jobId, source, action, 'warn', 0, msg, msg]);
+    return { id: id, status: 'warn', error: '', summary: msg, secs: 0, log: msg, result: undefined };
   }
 
-  let lg = '';
-  try { lg = Logger.getLog(); } catch (x) {}
-  const text = ((lg ? lg + '\n' : '') + buf.join('\n')).trim();
-  const resText = resultText_(result);
-  const status = error ? 'error'
-    : /"error"\s*:|FAILED|Failed /.test(resText + '\n' + text) ? 'warn' : 'ok';
-  const lines = text.split('\n').filter(String);
-  const summary = (error || resText || lines[lines.length - 1] || 'تم بدون مخرجات').substring(0, 300);
-  const secs = Math.round((Date.now() - t0) / 100) / 10;
-  const time = Utilities.formatDate(new Date(), APP.TZ, 'yyyy-MM-dd HH:mm:ss');
-  const id = Utilities.getUuid().substring(0, 8);
+  try {
+    // بيتسجل أول ما يبدأ، عشان لو جوجل وقفه عند 6 دقايق يفضل باين في السجل
+    writeLog_([id, startTime, jobId, source, action, 'running', '', 'شغال...', '']);
+    P.setProperty('APP_LAST_' + jobId,
+      JSON.stringify({ time: startTime, status: 'running', action: action, source: source, summary: 'شغال...' }));
 
-  writeLog_([id, time, jobId, source, action, status, secs, summary,
-    (resText ? 'RESULT: ' + resText + '\n\n' : '') + text]);
+    const buf = [];
+    const t0 = Date.now();
+    const restore = hookConsole_(buf);
+    try { Logger.clear(); } catch (x) {}
 
-  PropertiesService.getScriptProperties().setProperty('APP_LAST_' + jobId,
-    JSON.stringify({ time: time, status: status, action: action, source: source, summary: summary.substring(0, 200) }));
+    let result, error = '';
+    try {
+      result = fn();
+    } catch (err) {
+      error = String((err && err.message) || err);
+      buf.push('ERROR: ' + ((err && err.stack) || err));
+    } finally {
+      restore();
+    }
 
+    let lg = '';
+    try { lg = Logger.getLog(); } catch (x) {}
+    const text = ((lg ? lg + '\n' : '') + buf.join('\n')).trim();
+    const resText = resultText_(result);
+    const status = error ? 'error'
+      : /"error"\s*:|FAILED|Failed |(^|\n)WARN: |"timedOut":true/.test(resText + '\n' + text) ? 'warn' : 'ok';
+    const lines = text.split('\n').filter(String);
+    const summary = (error || resText || lines[lines.length - 1] || 'تم بدون مخرجات').substring(0, 300);
+    const secs = Math.round((Date.now() - t0) / 100) / 10;
 
-  return { id: id, status: status, error: error, summary: summary, secs: secs,
-    log: text.slice(-20000), result: result };
+    finishLog_(id, [id, startTime, jobId, source, action, status, secs, summary,
+      (resText ? 'RESULT: ' + resText + '\n\n' : '') + text]);
+
+    P.setProperty('APP_LAST_' + jobId,
+      JSON.stringify({ time: startTime, status: status, action: action, source: source, summary: summary.substring(0, 200) }));
+
+    return { id: id, status: status, error: error, summary: summary, secs: secs,
+      log: text.slice(-20000), result: result };
+  } finally {
+    releaseJob_(jobId);
+  }
 }
 
 function hookConsole_(buf) {
@@ -282,21 +326,38 @@ function logSheet_() {
     sh.getRange(1, 1, 1, 9).setValues([['Id', 'Time', 'Job', 'Source', 'Action', 'Status', 'Seconds', 'Summary', 'Log']]);
     sh.setFrozenRows(1);
   }
+  if (P.getProperty('APP_LOG_FMT') !== '2') {     // كل الأعمدة نص، عشان الوقت والـ Id ما يتحولوش لأرقام
+    sh.getRange('A:I').setNumberFormat('@');
+    P.setProperty('APP_LOG_FMT', '2');
+  }
   return sh;
 }
 
+function logRow_(row) {
+  row[8] = String(row[8]).substring(0, APP.LOG_MAX);
+  return row.map(function (v) { return typeof v === 'number' ? v : String(v); });
+}
+
+// appendRow عملية واحدة، فتشغيلين في نفس اللحظة ما يكتبوش فوق بعض
 function writeLog_(row) {
   try {
-    row[8] = String(row[8]).substring(0, APP.LOG_MAX);
     const sh = logSheet_();
-    sh.insertRowBefore(2);
-    const range = sh.getRange(2, 1, 1, row.length);
-    range.setNumberFormat('@');
-    range.setValues([row.map(function (v) { return typeof v === 'number' ? v : String(v); })]);
+    sh.appendRow(logRow_(row));
     const last = sh.getLastRow();
-    if (last > APP.LOG_KEEP + 1) sh.deleteRows(APP.LOG_KEEP + 2, last - APP.LOG_KEEP - 1);
+    if (last > APP.LOG_KEEP + 1) sh.deleteRows(2, last - APP.LOG_KEEP - 1);   // أقدم صفوف
   } catch (err) {
     console.error('Log write failed: ' + err);
+  }
+}
+
+function finishLog_(id, row) {
+  try {
+    const sh = logSheet_();
+    const cell = sh.getRange('A:A').createTextFinder(id).matchEntireCell(true).findNext();
+    if (!cell) return writeLog_(row);
+    sh.getRange(cell.getRow(), 1, 1, row.length).setValues([logRow_(row)]);
+  } catch (err) {
+    console.error('Log update failed: ' + err);
   }
 }
 
@@ -395,6 +456,12 @@ function webhookUrl_(kind) {
   return '';
 }
 
+function lastRun_(json) {
+  const L = JSON.parse(json || 'null');
+  if (L && L.status === 'running' && isStale_(L.time)) { L.status = 'stopped'; L.summary = 'اتوقف: عدّى حد الـ 6 دقايق بتاع جوجل'; }
+  return L;
+}
+
 function api_state(t) {
   auth_(t);
   const P = PropertiesService.getScriptProperties();
@@ -406,9 +473,9 @@ function api_state(t) {
     return {
       id: j.id, group: j.group, name: j.name, desc: j.desc || '',
       actions: j.actions,
-      last: JSON.parse(all['APP_LAST_' + j.id] || 'null'),
+      last: lastRun_(all['APP_LAST_' + j.id]),
       dryKey: j.dryKey || '',
-      dry: j.dryKey ? String(all[j.dryKey] || '').toLowerCase() === 'true' : null,
+      dry: j.dryKey ? String(all[j.dryKey] || '').trim().toLowerCase() !== 'false' : null,   // أي حاجة غير false = تجربة
       webhook: j.webhook ? webhookUrl_(j.webhook) : null,
       queue: j.id === 'products' ? Object.keys(all).filter(function (k) { return k.indexOf('PQ_Q_') === 0; }).length : null,
       triggers: j.triggers.map(function (tr) {
@@ -452,12 +519,13 @@ function api_setTrigger(t, fn, enabled, hour) {
     if (x.getHandlerFunction() === fn) ScriptApp.deleteTrigger(x);
   });
 
+  const h = Math.max(0, Math.min(23, Number(hour) || 0));
+  if (def.type === 'daily') PropertiesService.getScriptProperties().setProperty('APP_TRG_' + fn, String(h));   // الساعة بتتحفظ حتى لو الموعد مقفول
+
   if (enabled) {
     if (def.type === 'minutes') {
       ScriptApp.newTrigger(fn).timeBased().everyMinutes(def.every || 1).create();
     } else {
-      const h = Math.max(0, Math.min(23, Number(hour)));
-      PropertiesService.getScriptProperties().setProperty('APP_TRG_' + fn, String(h));
       ScriptApp.newTrigger(fn).timeBased().everyDays(1).atHour(h).inTimezone(APP.TZ).create();
     }
   }
@@ -477,12 +545,14 @@ function api_logs(t, jobId, limit) {
   const sh = logSheet_();
   const last = sh.getLastRow();
   if (last < 2) return [];
-  const n = Math.min(last - 1, jobId ? 1000 : Math.min(Number(limit) || 150, 500));
-  return sh.getRange(2, 1, n, 8).getDisplayValues()
-    .filter(function (r) { return !jobId || r[2] === jobId; })
-    .slice(0, Number(limit) || 150)
+  return sh.getRange(2, 1, last - 1, 8).getDisplayValues()
+    .filter(function (r) { return r[0] && (!jobId || r[2] === jobId); })
+    .sort(function (a, b) { return a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0; })   // الأحدث الأول
+    .slice(0, Math.min(Number(limit) || 150, 500))
     .map(function (r) {
-      return { id: r[0], time: r[1], job: r[2], source: r[3], action: r[4], status: r[5], secs: r[6], summary: r[7] };
+      const stale = r[5] === 'running' && isStale_(r[1]);
+      return { id: r[0], time: r[1], job: r[2], source: r[3], action: r[4], status: stale ? 'stopped' : r[5],
+        secs: r[6], summary: stale ? 'اتوقف: عدّى حد الـ 6 دقايق بتاع جوجل' : r[7] };
     });
 }
 
@@ -492,7 +562,9 @@ function api_logDetail(t, id) {
   const cell = sh.getRange('A:A').createTextFinder(String(id)).matchEntireCell(true).findNext();
   if (!cell) throw new Error('السجل غير موجود');
   const r = sh.getRange(cell.getRow(), 1, 1, 9).getDisplayValues()[0];
-  return { id: r[0], time: r[1], job: r[2], source: r[3], action: r[4], status: r[5], secs: r[6], summary: r[7], log: r[8] };
+  const stale = r[5] === 'running' && isStale_(r[1]);
+  return { id: r[0], time: r[1], job: r[2], source: r[3], action: r[4], status: stale ? 'stopped' : r[5], secs: r[6],
+    summary: stale ? 'اتوقف: عدّى حد الـ 6 دقايق بتاع جوجل، فاللوج بتاعه مش متسجل' : r[7], log: r[8] };
 }
 
 /* ---------- الإعدادات (Script Properties) ---------- */
@@ -506,9 +578,14 @@ function propType_(k) {
 }
 
 function isStateKey_(k) {
-  if (/^APP_/.test(k) || /^PQ_Q_/.test(k) || /PROCESSED$/.test(k)) return true;
-  if (/^KASHIER_PAYOUT_BT-/.test(k)) return true;
+  return /^APP_/.test(k) || isProtectedKey_(k);
+}
+
+// علامات اللي اترحّل قبل كده: تعديلها أو مسحها ممكن يرحّل نفس القيد تاني
+function isProtectedKey_(k) {
+  if (STATE_KEYS.indexOf(k) > -1 || /PROCESSED$/.test(k) || /^PQ_Q_/.test(k)) return true;
   if (/^BOSTA_PAYOUT_/.test(k) && k !== 'BOSTA_PAYOUT_START_DATE' && k !== 'BOSTA_PAYOUT_ORDERS_URL') return true;
+  if (/^KASHIER_PAYOUT_/.test(k) && k !== 'KASHIER_PAYOUT_START_DATE' && k !== 'KASHIER_PAYOUT_DRY_RUN') return true;
   return false;
 }
 
@@ -537,6 +614,7 @@ function api_saveSettings(t, changes) {
   let n = 0, qbo = false, shop = false;
   Object.keys(changes || {}).forEach(function (k) {
     if (!/^[A-Za-z0-9_\-]+$/.test(k) || /^APP_/.test(k)) throw new Error('اسم غير مسموح: ' + k);
+    if (isProtectedKey_(k)) throw new Error(k + ': ده من بيانات الحالة الداخلية (اللي اترحّل قبل كده)، ومينفعش يتعدل من هنا عشان القيود ما تتكررش.');
     const v = changes[k];
     if (v === null) { P.deleteProperty(k); n++; }
     else if (propType_(k) === 'secret' && v === '') { return; }

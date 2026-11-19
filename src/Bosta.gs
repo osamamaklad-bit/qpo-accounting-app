@@ -45,7 +45,7 @@ function syncBostaPayouts_() {
   lock.waitLock(30000);
   try {
     const start = P.getProperty('BOSTA_PAYOUT_START_DATE') || '9999-12-31';
-    const dry = P.getProperty('BOSTA_DRY_RUN') === 'true';
+    const dry = String(P.getProperty('BOSTA_DRY_RUN') || '').trim().toLowerCase() !== 'false';   // أي حاجة غير false = تجربة
     const tx = fetchBostaTransactions_(3); // newest first
 
     const payouts = tx.filter(t => t.category === 2)
@@ -242,6 +242,19 @@ function getQboToken_() {
   const cached = cache.get('QBO_ACCESS_TOKEN');
   if (cached) return cached;
 
+  // تجديد واحد بس في نفس الوقت: لو مهمتين احتاجوا توكن مع بعض، التانية بتاخد التوكن اللي الأولى جددته
+  const lock = LockService.getUserLock();
+  lock.waitLock(30000);
+  try {
+    const again = cache.get('QBO_ACCESS_TOKEN');
+    if (again) return again;
+    return refreshQboToken_(cache);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function refreshQboToken_(cache) {
   const P = PropertiesService.getScriptProperties();
   const basic = Utilities.base64Encode(req_('QBO_CLIENT_ID') + ':' + req_('QBO_CLIENT_SECRET'));
   const r = UrlFetchApp.fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {

@@ -56,6 +56,9 @@ function gadsSync50(dryRun) {
   const sh = ss.getSheetByName('GADS_TX');
   if (!sh) throw new Error('No tab GADS_TX | tabs: ' + ss.getSheets().map(function (s) { return s.getName(); }).join(', '));
   const v = sh.getDataRange().getDisplayValues();
+  const raw = sh.getDataRange().getValues();
+  const sheetTz = ss.getSpreadsheetTimeZone() || 'Africa/Cairo';
+  let badDates = 0;
   const H = v[0].map(function (h) { return String(h).trim().toLowerCase(); });
   const c = {date: H.indexOf('date'), type: H.indexOf('type'), desc: H.indexOf('description'),
              cost: H.indexOf('costs'), credit: H.indexOf('credits'), bal: H.indexOf('running balance')};
@@ -64,9 +67,9 @@ function gadsSync50(dryRun) {
 
   // 1) تجميع الأحداث
   const byDay = {}, events = [], seen = {};
-  v.slice(1).forEach(function (r) {
-    const d = new Date(r[c.date]); if (isNaN(d)) return;
-    const day = Utilities.formatDate(d, 'Africa/Cairo', 'yyyy-MM-dd');
+  v.slice(1).forEach(function (r, i) {
+    const day = gadsDay_(raw[i + 1][c.date], r[c.date], sheetTz);
+    if (!day) { if (String(r[c.date]).trim()) badDates++; return; }
     const text = (String(r[c.type]) + ' ' + String(c.desc >= 0 ? r[c.desc] : '')).trim();
     const low = text.toLowerCase();
     const cost = num(r[c.cost]), credit = num(r[c.credit]);
@@ -92,6 +95,8 @@ function gadsSync50(dryRun) {
     if (day >= today) { Logger.log(day + ' | EXP | ' + byDay[day] + ' | WAIT: day not finished yet'); return; }
     events.push({kind: 'EXP', day: day, amt: Math.round(byDay[day] * 100) / 100, signed: 1, key: day, text: 'spend'});
   });
+
+  if (badDates) console.warn('WARN: ' + badDates + ' صف اتخطّى لأن التاريخ مش مفهوم. خلي عمود Date تاريخ حقيقي أو بصيغة yyyy-MM-dd.');
 
   // 2) أحدث 50 حركة
   events.sort(function (a, b) { return a.day < b.day ? 1 : a.day > b.day ? -1 : 0; });
@@ -125,6 +130,21 @@ function gadsSync50(dryRun) {
     n++;
   }
   Logger.log('Posted ' + n);
+}
+// التاريخ من الخلية نفسها لو تاريخ حقيقي، أو من النص لو yyyy-MM-dd أو صيغة يفهمها JavaScript
+function gadsDay_(rawVal, disp, tz) {
+  if (rawVal instanceof Date && !isNaN(rawVal)) return Utilities.formatDate(rawVal, tz, 'yyyy-MM-dd');
+  const s = String(disp || rawVal || '').trim();
+  const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
+  const sl = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);   // 11/19/2026 (شهر/يوم) زي الأول، و19/11/2026 لو أول رقم > 12
+  if (sl) {
+    const a = Number(sl[1]), b = Number(sl[2]);
+    const mon = a > 12 ? b : a, day = a > 12 ? a : b;
+    return mon > 12 || day > 31 ? '' : sl[3] + '-' + ('0' + mon).slice(-2) + '-' + ('0' + day).slice(-2);
+  }
+  const d = new Date(s);
+  return isNaN(d) ? '' : Utilities.formatDate(d, 'Africa/Cairo', 'yyyy-MM-dd');
 }
 function hash_(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return h; }
 function gadsSync50Dry()  { gadsSync50(true); }

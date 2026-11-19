@@ -20,6 +20,12 @@ button:active{transform:none;box-shadow:none}
 button.pri{background:var(--cyan)}
 button.sm{padding:4px 10px;font-size:12px;border-width:1.5px}
 button.danger{color:var(--red);border-color:var(--red)}
+button:disabled{opacity:.45;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+.alert{background:#fff;border:3px solid var(--red);border-radius:16px;box-shadow:var(--shadow);padding:12px 16px;margin-top:18px}
+.alert h3{margin:0 0 6px;color:var(--red);font-size:15px}
+.alert .row{cursor:pointer;margin:4px 0}
+.alert .row:hover{background:var(--peach)}
+.alert .s{color:var(--mute);font-size:12px;word-break:break-word}
 input,select,textarea{font:inherit;border:1.5px solid rgba(0,0,0,.45);border-radius:6px;padding:7px 9px;background:#fff;width:100%}
 input:focus,select:focus,textarea:focus{outline:none;border-color:#000;box-shadow:0 0 0 3px var(--cyan)}
 textarea{min-height:110px;direction:ltr}
@@ -46,6 +52,7 @@ h2:before{content:"";width:10px;height:10px;border-radius:50%;background:var(--r
 .card h3{margin:0 0 4px;font-size:15px;font-weight:700}
 .desc{color:var(--mute);font-size:12px;margin-bottom:10px}
 .pill{display:inline-block;border-radius:10px;padding:1px 9px;font-size:12px;font-weight:700;border:1.5px solid currentColor}
+.pill.running{background:#e6fbfd;color:#0b7285}.pill.stopped{background:#ffe5e8;color:var(--red)}
 .pill.ok{background:#e8f8ee;color:var(--ok)}.pill.warn{background:#fff4dc;color:var(--warn)}.pill.error{background:#ffe5e8;color:var(--red)}.pill.none{background:#f3f3f3;color:var(--mute)}
 .last{background:#fbfbfb;border:1.5px dashed rgba(0,0,0,.25);border-radius:10px;padding:8px;font-size:12px;margin-bottom:10px}
 .last .s{color:var(--mute);margin-top:4px;word-break:break-word}
@@ -158,11 +165,12 @@ input[type=checkbox]{accent-color:var(--red);width:16px;height:16px}
 <div id="toast" class="hidden"></div>
 
 <script>
-let TOKEN = null, STATE = null, SETTINGS = null, ACCOUNTS = null;
-const ST = {ok:'تم', warn:'تحذير', error:'خطأ'};
+let TOKEN = null, STATE = null, SETTINGS = null, ACCOUNTS = null, RUNNING = false, LOG_SEQ = 0, PENDING_LOG_JOB = null;
+const ST = {ok:'تم', warn:'تحذير', error:'خطأ', running:'شغال', stopped:'اتوقف'};
 const SRC = {manual:'يدوي', schedule:'مجدول', webhook:'ويب هوك'};
 
-function store(k, v){ try{ v===undefined ? null : (v===null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v)); return sessionStorage.getItem(k);}catch(e){return null;} }
+// الجلسة بتفضل في كل التابات لحد ما تنتهي (6 ساعات) أو تعمل خروج
+function store(k, v){ try{ v===undefined ? null : (v===null ? localStorage.removeItem(k) : localStorage.setItem(k, v)); return localStorage.getItem(k);}catch(e){return null;} }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function $(id){ return document.getElementById(id); }
 function toast(msg, ms){ const t=$('toast'); t.textContent=msg; t.classList.remove('hidden'); clearTimeout(t._h); if(ms!==0) t._h=setTimeout(()=>t.classList.add('hidden'), ms||3500); }
@@ -213,6 +221,12 @@ function hours(sel){ let o=''; for(let h=0;h<24;h++) o+=`<option value="${h}" ${
 
 function renderHome(){
   let h = '';
+  const bad = STATE.jobs.filter(j => j.last && (j.last.status==='error' || j.last.status==='stopped' || j.last.status==='warn'));
+  if (bad.length){
+    h += `<div class="alert"><h3>محتاج انتباهك: آخر تشغيل لـ ${bad.length} ${bad.length===1?'سكريبت':'سكريبتات'} مخلصش تمام</h3>`;
+    bad.forEach(j => h += `<div class="row" onclick="jobLogs('${j.id}')"><span class="pill ${esc(j.last.status)}">${ST[j.last.status]||esc(j.last.status)}</span> <b>${esc(j.name)}</b> · ${esc(j.last.time)}<div class="s" style="flex-basis:100%">${esc(j.last.summary)}</div></div>`);
+    h += `<div class="badge">دوس على أي سطر عشان تشوف السجل.</div></div>`;
+  }
   STATE.groups.forEach(g => {
     h += `<h2>${esc(g.name)}</h2><div class="grid">`;
     STATE.jobs.forEach((j, ji) => {
@@ -228,7 +242,7 @@ function renderHome(){
       });
       if (j.queue !== null) h += `<div class="badge">منتجات في الطابور: ${j.queue}</div>`;
       h += `<div class="acts">`;
-      j.actions.forEach((a, ai) => h += `<button class="sm ${ai===0?'pri':''}" onclick="runAct(${ji},${ai})">${esc(a.label)}</button>`);
+      j.actions.forEach((a, ai) => h += `<button class="sm ${ai===0?'pri':''}" ${RUNNING?'disabled':''} onclick="runAct(${ji},${ai})">${esc(a.label)}</button>`);
       if (j.dryKey) h += `<button class="sm" onclick="toggleDry(${ji})">${j.dry?'إيقاف وضع التجربة':'تفعيل وضع التجربة'}</button>`;
       h += `<button class="sm" onclick="jobLogs('${j.id}')">السجل</button></div>`;
       if (j.webhook !== null) {
@@ -259,17 +273,31 @@ async function delTrig(id){
   if(!confirm('حذف الموعد ده؟')) return;
   try{ STATE = await call('api_deleteTrigger', TOKEN, id); renderHome(); toast('تم الحذف'); }catch(e){ toast(errMsg(e), 6000); }
 }
+function setActsDisabled(on){ document.querySelectorAll('#tab-home .acts button').forEach(b => b.disabled = on); }
+
 async function runAct(ji, ai){
+  if (RUNNING){ toast('فيه تشغيل شغال دلوقتي، استنى لما يخلص'); return; }
   const j = STATE.jobs[ji], a = j.actions[ai];
-  if (a.confirm && !confirm('تأكيد: ' + a.label + '؟')) return;
-  if (!a.confirm && j.dry===false && ai===0 && !confirm('وضع التجربة مقفول: القيود هتترحل فعلاً لـ QBO. متأكد؟')) return;
-  toast('جاري التشغيل: ' + a.label + ' ... (ممكن ياخد لحد 6 دقايق)', 0);
+  if (a.post && j.dry !== true){
+    if (!confirm('الزرار ده هيرحّل في QBO فعلاً:\n' + j.name + ' ← ' + a.label + '\n\nمتأكد؟')) return;
+  } else if (a.confirm && !confirm('تأكيد: ' + a.label + '؟')) return;
+
+  RUNNING = true; setActsDisabled(true);
+  const t0 = Date.now();
+  toast('جاري التشغيل: ' + a.label + ' ... (ممكن ياخد لحد 6 دقايق، متقفلش الصفحة)', 0);
   try{
     const r = await call('api_runAction', TOKEN, j.id, a.fn);
     toast(ST[r.status] + ' · ' + r.secs + ' ث');
     openModal(j.name + ' — ' + a.label, `<span class="pill ${r.status}">${ST[r.status]}</span> ${esc(r.summary)}`, r.log);
+  }catch(e){
+    if (errMsg(e) !== 'AUTH'){
+      const long = Date.now() - t0 > 300000;
+      toast(long ? 'التشغيل طوّل وجوجل وقفه عند 6 دقايق. شوف السجل، ولو المزامنة وقفت في النص دوس الزرار تاني.' : errMsg(e), 12000);
+    }
+  }finally{
+    RUNNING = false;
     loadHome();
-  }catch(e){ toast(errMsg(e), 8000); }
+  }
 }
 async function toggleDry(ji){
   const j = STATE.jobs[ji];
@@ -285,22 +313,25 @@ function copyText(ji){
 }
 
 /* ---------- السجل ---------- */
-function jobLogs(id){ showTab('logs'); $('logJob').value = id; loadLogs(); }
+function jobLogs(id){ PENDING_LOG_JOB = id; showTab('logs'); }
 async function loadLogs(){
+  const seq = ++LOG_SEQ;              // لو اتبعت طلب أحدث، الرد القديم بيتجاهل
   const sel = $('logJob');
   if (!sel.options.length){
     if(!STATE) STATE = await call('api_state', TOKEN);
     sel.innerHTML = '<option value="">كل السكريبتات</option>' + STATE.jobs.map(j => `<option value="${j.id}">${esc(j.name)}</option>`).join('');
   }
+  if (PENDING_LOG_JOB !== null){ sel.value = PENDING_LOG_JOB; PENDING_LOG_JOB = null; }
   if (STATE && STATE.logUrl){ $('logSheet').href = STATE.logUrl; $('logSheet').textContent = 'فتح شيت السجل'; }
   $('logsBody').innerHTML = '<div class="badge">جاري التحميل...</div>';
   try{
     const rows = await call('api_logs', TOKEN, sel.value, 200);
+    if (seq !== LOG_SEQ) return;
     const names = {}; STATE.jobs.forEach(j => names[j.id] = j.name);
     if (!rows.length){ $('logsBody').innerHTML = '<div class="card">لا يوجد سجل بعد.</div>'; return; }
     $('logsBody').innerHTML = `<table><tr><th>الوقت</th><th>السكريبت</th><th>المصدر</th><th>الإجراء</th><th>الحالة</th><th>ث</th><th>الملخص</th></tr>` +
       rows.map(r => `<tr class="click" onclick="showLog('${esc(r.id)}')"><td style="white-space:nowrap">${esc(r.time)}</td><td>${esc(names[r.job]||r.job)}</td><td>${esc(SRC[r.source]||r.source)}</td><td class="mono">${esc(r.action)}</td><td><span class="pill ${esc(r.status)}">${ST[r.status]||esc(r.status)}</span></td><td>${esc(r.secs)}</td><td style="word-break:break-word">${esc(r.summary)}</td></tr>`).join('') + `</table>`;
-  }catch(e){ $('logsBody').innerHTML = `<div class="err">${esc(errMsg(e))}</div>`; }
+  }catch(e){ if (seq === LOG_SEQ) $('logsBody').innerHTML = `<div class="err">${esc(errMsg(e))}</div>`; }
 }
 async function showLog(id){
   try{
@@ -320,7 +351,7 @@ async function loadSettings(){
 function propInput(p){
   const id = 'p-' + p.key, o = `data-k="${esc(p.key)}" data-t="${p.type}" data-o="${esc(p.value)}"`;
   if (p.type==='secret') return `<input id="${id}" ${o} type="password" placeholder="${p.set?'•••••• محفوظ — اكتب لتغييره':'غير مضبوط'}" autocomplete="new-password">`;
-  if (p.type==='bool') return `<select id="${id}" ${o}><option value="" ${!p.value?'selected':''}>—</option><option value="true" ${p.value==='true'?'selected':''}>true (تجربة، بدون ترحيل)</option><option value="false" ${p.value==='false'?'selected':''}>false (ترحيل فعلي)</option></select>`;
+  if (p.type==='bool') return `<select id="${id}" ${o}><option value="" ${!p.value?'selected':''}>— (تجربة)</option><option value="true" ${p.value==='true'?'selected':''}>true (تجربة، بدون ترحيل)</option><option value="false" ${p.value==='false'?'selected':''}>false (ترحيل فعلي)</option></select>`;
   if (p.type==='account' && ACCOUNTS){
     let opts = `<option value="">—</option>`, found = !p.value;
     ACCOUNTS.forEach(a => { const s = a.id===p.value; if(s) found=true; opts += `<option value="${esc(a.id)}" ${s?'selected':''}>${esc(a.name)} (${esc(a.id)})</option>`; });
@@ -404,6 +435,8 @@ async function changePw(){
   try{ await call('api_changePassword', TOKEN, $('oldPw').value, $('newPw').value); showLogin('تم تغيير كلمة السر، ادخل بالجديدة'); }
   catch(e){ toast(errMsg(e), 6000); }
 }
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
 TOKEN = store('qboTok');
 if (TOKEN) start(); else showLogin();

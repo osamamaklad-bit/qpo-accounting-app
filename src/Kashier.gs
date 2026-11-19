@@ -46,7 +46,7 @@ function kashierProp_(name) {
 }
 
 function kashierDryRun_() {
-  return kashierProp_('KASHIER_PAYOUT_DRY_RUN').toLowerCase() === 'true';
+  return kashierProp_('KASHIER_PAYOUT_DRY_RUN').toLowerCase() !== 'false';   // أي حاجة غير false = تجربة
 }
 
 function kashierStartDate_() {
@@ -121,6 +121,7 @@ function kashierFetchList_(baseUrl, stopBefore, dateField) {
   const parts = baseUrl.split('?');
   const qs = (parts[1] || '').split('&').filter(s => s && !/^page=/i.test(s));
   let all = [], prevFirstId = null;
+  const rowKey = x => String(x._id || x.transactionId || x.originReference || JSON.stringify(x));
 
   for (let p = 1; p <= 30; p++) {
     const url = parts[0] + '?' + qs.concat('page=' + p).join('&');
@@ -132,8 +133,8 @@ function kashierFetchList_(baseUrl, stopBefore, dateField) {
     const list = Array.isArray(body.data) ? body.data : Array.isArray(body.body) ? body.body : null;
     if (!list) throw new Error('Unexpected Kashier response, keys: ' + Object.keys(body).join(','));
 
-    if (!list.length || list[0]._id === prevFirstId) break;   // empty, or API ignored the page param
-    prevFirstId = list[0]._id;
+    if (!list.length || rowKey(list[0]) === prevFirstId) break;   // empty, or API ignored the page param
+    prevFirstId = rowKey(list[0]);
     all = all.concat(list);
 
     const last = list[list.length - 1];

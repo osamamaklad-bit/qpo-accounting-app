@@ -26,7 +26,7 @@ const PQ = {
   SHOPIFY_API_VERSION: '2026-01',
   QBO_MINOR_VERSION: '75',
   QBO_API_BASE: 'https://quickbooks.api.intuit.com/v3/company',
-  MAX_RUN_MS: 5 * 60 * 1000,           // stop before Apps Script's 6-minute limit
+  MAX_RUN_MS: 4 * 60 * 1000,           // stop well before Apps Script's 6-minute limit (run again to continue)
   ISSUES_SHEET: 'QBO Sync Issues',     // full sync (rewritten each run)
   WEBHOOK_SHEET: 'QBO Webhook Issues', // webhook syncs (appended)
   QUEUE_PREFIX: 'PQ_Q_',
@@ -282,6 +282,7 @@ function pqRun_(options) {
   for (let i = 0; i < variants.length; i++) {
     if (Date.now() - startedAt > PQ.MAX_RUN_MS) {
       summary.timedOut = true;         // just run again: finished items cost no API calls
+      console.warn('WARN: وقفت قبل حد الـ 6 دقايق بعد ' + i + ' من ' + variants.length + ' منتج. دوس الزرار تاني عشان تكمّل.');
       break;
     }
 
