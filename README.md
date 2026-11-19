@@ -48,3 +48,11 @@
    - `DEPLOYMENT_ID` (اختياري) = الجزء اللي بين `/s/` و `/exec` في رابط الـ Web app
 
 ⚠️ `clasp push` بيخلي ملفات مشروع Apps Script مطابقة لـ `src/` بالظبط: أي ملف في المحرر مش موجود هنا هيتمسح.
+
+## النشر من جهازك (أو من Claude Code)
+
+```bash
+git clone https://github.com/osamamaklad-bit/qpo-accounting-app && cd qpo-accounting-app
+SCRIPT_ID=<Script ID من Project Settings> ./deploy.sh
+```
+أول مرة: فعّل Apps Script API من https://script.google.com/home/usersettings، والسكريبت هيطلب `clasp login`.
