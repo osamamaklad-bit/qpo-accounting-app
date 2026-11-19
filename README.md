@@ -53,10 +53,10 @@
 
 ## الواجهة على GitHub Pages
 
-نفس `src/Index.html` بيتنشر على GitHub Pages (`.github/workflows/pages.yml`) مع كل تعديل على `main`،
-وبيكلم السكريبت عن طريق `POST /exec?src=ui` (`uiApi_` في `Core.gs`). كلمة السر والجلسات زي ما هي.
+GitHub Pages بيتنشر من جذر `main`. `index.html` في الجذر نسخة من `src/Index.html` وبيتحدّث لوحده (`.github/workflows/pages.yml`)، فعدّل `src/Index.html` بس.
+الواجهة بتكلم السكريبت عن طريق `POST /exec?src=ui` (`uiApi_` في `Core.gs`). كلمة السر والجلسات زي ما هي.
 
-إعداد مرة واحدة: Settings ← Pages ← Source = **GitHub Actions**.
+إعداد Pages: Settings ← Pages ← Deploy from a branch ← `main` / `(root)`.
 لازم آخر نسخة من `Core.gs` تكون متنشرة على Apps Script، وإلا الواجهة هتقول "تعذّر الاتصال بالسكريبت".
 
 ## النشر من جهازك (أو من Claude Code)
