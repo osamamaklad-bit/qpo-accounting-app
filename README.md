@@ -9,7 +9,7 @@
 | الملف | الوظيفة |
 |---|---|
 | `src/Core.gs` | `doGet` و `doPost` الوحيدين، الدخول بكلمة السر، السجل، المواعيد، الإعدادات |
-| `src/Index.html` | واجهة الإدارة (عربي، RTL) |
+| `src/Index.html` | واجهة الإدارة (عربي + English، ببراندينج PetFriend من Canva) |
 | `src/PO.gs` | استلام أوامر الشراء من شوبيفاي ← Bill + قيد إعادة تصنيف |
 | `src/GoogleAds.gs` | Google Ads ← قيود QBO |
 | `src/MetaAds.gs` | Meta Ads ← قيود QBO |

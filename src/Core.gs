@@ -24,8 +24,8 @@ const APP = {
 };
 
 const GROUPS = [
-  { id: 'A', name: 'المشتريات والإعلانات' },
-  { id: 'B', name: 'التحصيلات والمنتجات' }
+  { id: 'A', name: 'المشتريات والإعلانات', name_en: 'Purchasing & Ads' },
+  { id: 'B', name: 'التحصيلات والمنتجات', name_en: 'Collections & Products' }
 ];
 
 // ---------- كل السكريبتات ----------
@@ -35,82 +35,88 @@ const GROUPS = [
 // triggers: المواعيد اللي الواجهة بتديرها (كل تشغيل مجدول بيتسجل في السجل)
 const JOBS = [
   {
-    id: 'po', group: 'A', name: 'استلام أوامر الشراء ← Bill في QBO',
+    id: 'po', group: 'A', name: 'استلام أوامر الشراء ← Bill في QBO', name_en: 'Purchase orders → QBO bills',
     desc: 'يسحب التحويلات المستلمة من شوبيفاي، يكتب الأصناف في تاب PO، وينشئ Bill + قيد إعادة تصنيف.',
+    desc_en: 'Pulls received transfers from Shopify, writes the items to the PO tab, and creates a bill plus a reclass journal.',
     actions: [
-      { fn: 'dailyRun', label: 'تشغيل الآن', post: true },
-      { fn: 'testOne', label: 'معالجة آخر تحويل مستلم', post: true },
-      { fn: 'reclassExistingBills', label: 'إعادة تصنيف الفواتير الحالية', post: true },
-      { fn: 'markExistingAsProcessed', label: 'اعتبار كل التحويلات الحالية مُعالجة', confirm: true }
+      { fn: 'dailyRun', label: 'تشغيل الآن', label_en: 'Run now', post: true },
+      { fn: 'testOne', label: 'معالجة آخر تحويل مستلم', label_en: 'Process latest received transfer', post: true },
+      { fn: 'reclassExistingBills', label: 'إعادة تصنيف الفواتير الحالية', label_en: 'Reclass existing bills', post: true },
+      { fn: 'markExistingAsProcessed', label: 'اعتبار كل التحويلات الحالية مُعالجة', label_en: 'Mark all current transfers as processed', confirm: true }
     ],
-    triggers: [{ fn: 'cron_po', label: 'يومياً', type: 'daily', hour: 15 }],
+    triggers: [{ fn: 'cron_po', label: 'يومياً', label_en: 'Daily', type: 'daily', hour: 15 }],
     props: ['SPREAD_SHEET_ID', 'QBO_INVENTORY_ASSET_ACCOUNT_ID', 'QBO_INVENTORY_OFFSET_ACCOUNT_ID']
   },
   {
-    id: 'gads', group: 'A', name: 'Google Ads ← قيود QBO',
+    id: 'gads', group: 'A', name: 'Google Ads ← قيود QBO', name_en: 'Google Ads → QBO journals',
     desc: 'يقرأ تاب GADS_TX: مصروف يومي (بعد ما اليوم يخلص)، سداد، وأرصدة.',
+    desc_en: 'Reads the GADS_TX tab: daily spend (once the day is over), payments and credits.',
     actions: [
-      { fn: 'gadsSync50Dry', label: 'تجربة (بدون ترحيل)' },
-      { fn: 'gadsSync50Post', label: 'ترحيل آخر 50 حركة', post: true },
-      { fn: 'googleAdsDailyRun', label: 'ترحيل من تاب GADS (القديم)', post: true }
+      { fn: 'gadsSync50Dry', label: 'تجربة (بدون ترحيل)', label_en: 'Dry run (no posting)' },
+      { fn: 'gadsSync50Post', label: 'ترحيل آخر 50 حركة', label_en: 'Post latest 50 items', post: true },
+      { fn: 'googleAdsDailyRun', label: 'ترحيل من تاب GADS (القديم)', label_en: 'Post from old GADS tab', post: true }
     ],
-    triggers: [{ fn: 'cron_gads', label: 'يومياً', type: 'daily', hour: 10 }],
+    triggers: [{ fn: 'cron_gads', label: 'يومياً', label_en: 'Daily', type: 'daily', hour: 10 }],
     props: ['SPREAD_SHEET_ID2', 'QBO_GADS_EXPENSE_ACCOUNT_ID', 'QBO_GADS_CLEARING_ACCOUNT_ID', 'QBO_META_PAYMENT_ACCOUNT_ID']
   },
   {
-    id: 'meta', group: 'A', name: 'Meta Ads ← قيود QBO',
+    id: 'meta', group: 'A', name: 'Meta Ads ← قيود QBO', name_en: 'Meta Ads → QBO journals',
     desc: 'المجدول يرحّل الـ Charges فقط. الفواتير يدوي عشان ما يتكررش نفس المبلغ مرتين.',
+    desc_en: 'The schedule posts charges only. Invoices are manual so the same amount is never posted twice.',
     actions: [
-      { fn: 'metaChargesDryRun', label: 'تجربة Charges' },
-      { fn: 'metaChargesPost', label: 'ترحيل Charges', post: true },
-      { fn: 'metaInvoicesDry', label: 'تجربة الفواتير' },
-      { fn: 'metaInvoicesPost', label: 'ترحيل الفواتير', post: true },
-      { fn: 'metaFindBusiness', label: 'معرفة Business ID' }
+      { fn: 'metaChargesDryRun', label: 'تجربة Charges', label_en: 'Dry run charges' },
+      { fn: 'metaChargesPost', label: 'ترحيل Charges', label_en: 'Post charges', post: true },
+      { fn: 'metaInvoicesDry', label: 'تجربة الفواتير', label_en: 'Dry run invoices' },
+      { fn: 'metaInvoicesPost', label: 'ترحيل الفواتير', label_en: 'Post invoices', post: true },
+      { fn: 'metaFindBusiness', label: 'معرفة Business ID', label_en: 'Find Business ID' }
     ],
-    triggers: [{ fn: 'cron_meta', label: 'يومياً (Charges)', type: 'daily', hour: 11 }],
+    triggers: [{ fn: 'cron_meta', label: 'يومياً (Charges)', label_en: 'Daily (charges)', type: 'daily', hour: 11 }],
     props: ['META_AD_ACCOUNT_ID', 'META_BUSINESS_ID', 'META_TOKEN', 'QBO_META_CLEARING_ACCOUNT_ID', 'QBO_META_PAYMENT_ACCOUNT_ID']
   },
   {
-    id: 'bosta', group: 'B', name: 'تحويلات بوسطة ← قيد QBO',
+    id: 'bosta', group: 'B', name: 'تحويلات بوسطة ← قيد QBO', name_en: 'Bosta payouts → QBO journal',
     desc: 'قيد لكل Cash-out: تحصيل كل أوردر، رسوم بوسطة، والكريدت.',
+    desc_en: 'One journal per cash-out: each order’s collection, Bosta fees and credits.',
     dryKey: 'BOSTA_DRY_RUN', webhook: 'bosta',
     actions: [
-      { fn: 'runSync', label: 'تشغيل الآن', post: true },
-      { fn: 'checkProps', label: 'فحص الإعدادات' }
+      { fn: 'runSync', label: 'تشغيل الآن', label_en: 'Run now', post: true },
+      { fn: 'checkProps', label: 'فحص الإعدادات', label_en: 'Check settings' }
     ],
-    triggers: [{ fn: 'cron_bosta', label: 'يومياً', type: 'daily', hour: 12 }],
+    triggers: [{ fn: 'cron_bosta', label: 'يومياً', label_en: 'Daily', type: 'daily', hour: 12 }],
     props: ['BOSTA_API_KEY', 'BOSTA_AUTH_HEADER_NAME', 'BOSTA_WEBHOOK_TOKEN', 'BOSTA_FEES_URL', 'BOSTA_PAYOUT_ORDERS_URL',
       'BOSTA_PAYOUT_START_DATE', 'BOSTA_DRY_RUN', 'QBO_BOSTA_CLEARING_ACCOUNT_ID', 'QBO_BOSTA_FEES_ACCOUNT_ID',
       'QBO_BOSTA_CREDITS_ACCOUNT_ID']
   },
   {
-    id: 'kashier', group: 'B', name: 'تحويلات كاشير ← قيد QBO',
+    id: 'kashier', group: 'B', name: 'تحويلات كاشير ← قيد QBO', name_en: 'Kashier payouts → QBO journal',
     desc: 'قيد لكل Payout مفصّل بالمدفوعات والرسوم لكل Settlement.',
+    desc_en: 'One journal per payout, itemized by payment, with fees per settlement.',
     dryKey: 'KASHIER_PAYOUT_DRY_RUN',
     actions: [
-      { fn: 'kashierPayoutRun', label: 'تشغيل الآن', post: true },
-      { fn: 'checkKashierProps', label: 'فحص الإعدادات' },
-      { fn: 'kashierWhyEmpty', label: 'ليه مفيش قيود؟' },
-      { fn: 'kashierListBooked', label: 'التحويلات المسجلة' },
-      { fn: 'kashierCheckUrls', label: 'فحص الروابط' },
-      { fn: 'kashierTokenExpiry', label: 'انتهاء التوكن' }
+      { fn: 'kashierPayoutRun', label: 'تشغيل الآن', label_en: 'Run now', post: true },
+      { fn: 'checkKashierProps', label: 'فحص الإعدادات', label_en: 'Check settings' },
+      { fn: 'kashierWhyEmpty', label: 'ليه مفيش قيود؟', label_en: 'Why no journals?' },
+      { fn: 'kashierListBooked', label: 'التحويلات المسجلة', label_en: 'Booked payouts' },
+      { fn: 'kashierCheckUrls', label: 'فحص الروابط', label_en: 'Check URLs' },
+      { fn: 'kashierTokenExpiry', label: 'انتهاء التوكن', label_en: 'Token expiry' }
     ],
-    triggers: [{ fn: 'cron_kashier', label: 'يومياً', type: 'daily', hour: 13 }],
+    triggers: [{ fn: 'cron_kashier', label: 'يومياً', label_en: 'Daily', type: 'daily', hour: 13 }],
     props: ['KASHIER_API_KEY', 'KASHIER_AUTH_HEADER', 'KASHIER_API_URL', 'KASHIER_SETTLEMENTS_URL', 'KASHIER_PAYMENTS_URL',
       'KASHIER_PAYOUT_START_DATE', 'KASHIER_PAYOUT_DRY_RUN', 'KASHIER_QBO_CLEARING_ACC_ID', 'KASHIER_FEES_ACC_ID',
       'KASHIER_LOGIN_URL', 'KASHIER_LOGIN_BODY', 'KASHIER_TOKEN_FIELD']
   },
   {
-    id: 'products', group: 'B', name: 'مزامنة المنتجات شوبيفاي ← QBO',
+    id: 'products', group: 'B', name: 'مزامنة المنتجات شوبيفاي ← QBO', name_en: 'Product sync Shopify → QBO',
     desc: 'الاسم والـ SKU والسعر والتكلفة. الكمية لا تُزامن. بتشتغل مرة في اليوم، أو يدوي من الزرار. لو المنتجات كتير ووقفت قبل ما تخلص، دوس الزرار تاني وهتكمّل.',
+    desc_en: 'Name, SKU, price and cost (not quantity). Runs once a day or from the button. If it stops before finishing, press it again to continue.',
     actions: [
-      { fn: 'pqSyncAll', label: 'زامن المنتجات الآن (شوبيفاي ← QBO)', confirm: true },
-      { fn: 'pqDryRun', label: 'تجربة (بدون تعديل)' },
-      { fn: 'debugShopifyToken', label: 'فحص اتصال شوبيفاي' },
-      { fn: 'pqClearQueue', label: 'مسح الطابور القديم', confirm: true }
+      { fn: 'pqSyncAll', label: 'زامن المنتجات الآن (شوبيفاي ← QBO)', label_en: 'Sync products now (Shopify → QBO)', confirm: true },
+      { fn: 'pqDryRun', label: 'تجربة (بدون تعديل)', label_en: 'Dry run (no changes)' },
+      { fn: 'debugShopifyToken', label: 'فحص اتصال شوبيفاي', label_en: 'Check Shopify connection' },
+      { fn: 'pqClearQueue', label: 'مسح الطابور القديم', label_en: 'Clear old queue', confirm: true }
     ],
     triggers: [
-      { fn: 'cron_pqDaily', label: 'مزامنة كاملة يومية', type: 'daily', hour: 3 }
+      { fn: 'cron_pqDaily', label: 'مزامنة كاملة يومية', label_en: 'Daily full sync', type: 'daily', hour: 3 }
     ],
     props: ['QBO_INCOME_ACCOUNT_ID', 'QBO_EXPENSE_ACCOUNT_ID', 'QBO_ASSET_ACCOUNT_ID',
       'QBO_INV_START_DATE', 'SHEET_ID']
@@ -276,8 +282,9 @@ function runLogged_(jobId, source, action, fn) {
     const resText = resultText_(result);
     const status = error ? 'error'
       : /"error"\s*:|FAILED|Failed |WARN: |"timedOut":true/.test(resText + '\n' + text) ? 'warn' : 'ok';
-    const lines = text.split('\n').filter(String);
-    const summary = (error || resText || lines[lines.length - 1] || 'تم بدون مخرجات').substring(0, 300);
+    const lines = text.split('\n').filter(String)
+      .map(function (l) { return l.replace(/^.*?\b(INFO|WARNING|SEVERE): /, ''); });   // من غير ختم الوقت بتاع Logger
+    const summary = (error || resText || lines[lines.length - 1] || 'تم بدون مخرجات · Done, no output').substring(0, 300);
     const secs = Math.round((Date.now() - t0) / 100) / 10;
 
     finishLog_(id, [id, startTime, jobId, source, action, status, secs, summary,
@@ -470,7 +477,7 @@ function api_state(t) {
 
   const jobs = JOBS.map(function (j) {
     return {
-      id: j.id, group: j.group, name: j.name, desc: j.desc || '',
+      id: j.id, group: j.group, name: j.name, name_en: j.name_en || '', desc: j.desc || '', desc_en: j.desc_en || '',
       actions: j.actions,
       last: lastRun_(all['APP_LAST_' + j.id]),
       dryKey: j.dryKey || '',
@@ -480,7 +487,7 @@ function api_state(t) {
       triggers: j.triggers.map(function (tr) {
         known[tr.fn] = 1;
         return {
-          fn: tr.fn, label: tr.label, type: tr.type, every: tr.every || null,
+          fn: tr.fn, label: tr.label, label_en: tr.label_en || '', type: tr.type, every: tr.every || null,
           hour: Number(all['APP_TRG_' + tr.fn] || tr.hour || 0),
           enabled: trig.some(function (x) { return x.getHandlerFunction() === tr.fn; })
         };
@@ -492,7 +499,7 @@ function api_state(t) {
     .map(function (x) { return { id: x.getUniqueId(), fn: x.getHandlerFunction(), type: String(x.getEventType()) }; });
 
   return {
-    groups: GROUPS, jobs: jobs, others: others,
+    groups: GROUPS, jobs: jobs, others: others, goLive: all.GO_LIVE_DATE || '',
     logUrl: all.APP_LOG_SHEET_ID ? 'https://docs.google.com/spreadsheets/d/' + all.APP_LOG_SHEET_ID : ''
   };
 }
@@ -599,8 +606,8 @@ function api_settings(t) {
     return { key: k, type: type, set: v !== undefined && v !== '', value: type === 'secret' ? '' : (v || '') };
   };
 
-  const sections = [{ id: 'shared', name: 'إعدادات مشتركة (QBO + شوبيفاي)', items: SHARED_PROPS.map(mk) }]
-    .concat(JOBS.map(function (j) { return { id: j.id, name: j.name, items: j.props.map(mk) }; }));
+  const sections = [{ id: 'shared', name: 'إعدادات مشتركة (QBO + شوبيفاي)', name_en: 'Shared settings (QBO + Shopify)', items: SHARED_PROPS.map(mk) }]
+    .concat(JOBS.map(function (j) { return { id: j.id, name: j.name, name_en: j.name_en, items: j.props.map(mk) }; }));
 
   const others = Object.keys(all).filter(function (k) { return !used[k] && !isStateKey_(k); }).sort().map(mk);
   const stateCount = Object.keys(all).filter(isStateKey_).length;
