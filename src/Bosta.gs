@@ -212,8 +212,13 @@ function buildBostaPayoutJournal_(po, extras, orders) {
   if (credits > 0) {
     if (Math.abs((cr - dr) - 0) <= 0.01) {
       // already balanced: order fees are net of credits, so no credits line
-    } else if (Math.abs((dr + credits) - cr) <= 0.01 || Math.abs(dr - (cr + credits)) <= 0.01) {
+    } else if (Math.abs(dr - (cr + credits)) <= 0.01) {
+      // credits paid part of the fees: the payout is higher than cash - fees
       add('Credit', CREDITS, credits, 'Bosta credits consumed');
+      dr = r2(sum('Debit')); cr = r2(sum('Credit'));
+    } else if (Math.abs((dr + credits) - cr) <= 0.01) {
+      // credits were deducted on top of the fees: the payout is lower than cash - fees
+      add('Debit', CREDITS, credits, 'Bosta credits consumed');
       dr = r2(sum('Debit')); cr = r2(sum('Credit'));
     }
   }
