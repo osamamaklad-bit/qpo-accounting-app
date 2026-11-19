@@ -164,9 +164,30 @@ function doGet() {
 
 function doPost(e) {
   const p = (e && e.parameter) || {};
+  if (p.src === 'ui') return uiApi_(e);             // الواجهة على GitHub Pages
   if (p.src === 'pq') return pqHandleWebhook_(e);   // شوبيفاي محتاج رد في أقل من 5 ثواني
   const r = runLogged_('bosta', 'webhook', 'handleBostaWebhook_', function () { return handleBostaWebhook_(e); });
   return r.result || json_({ ok: false, error: r.error });
+}
+
+// الواجهة اللي برة Apps Script (GitHub Pages) بتبعت POST بـ {fn, args}
+// كل دالة هنا بتتحقق من التوكن بنفسها (auth_) ما عدا الدخول والخروج.
+const UI_API = ['api_login', 'api_logout', 'api_changePassword', 'api_state', 'api_runAction', 'api_setTrigger',
+  'api_deleteTrigger', 'api_logs', 'api_logDetail', 'api_settings', 'api_saveSettings', 'api_qboAccounts',
+  'api_testConnections', 'api_importProps'];
+
+function uiApi_(e) {
+  let out;
+  try {
+    const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    const fn = String(body.fn || '');
+    if (UI_API.indexOf(fn) < 0) throw new Error('Unknown API: ' + fn);
+    const args = Array.isArray(body.args) ? body.args : [];
+    out = { ok: true, result: globalThis[fn].apply(null, args) };
+  } catch (err) {
+    out = { ok: false, error: String((err && err.message) || err) };
+  }
+  return json_(out);
 }
 
 /* ============================================================

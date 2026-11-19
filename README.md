@@ -1,6 +1,8 @@
 # PetFriend • QBO accounting app
 
-**رابط الواجهة:** https://script.google.com/macros/s/AKfycby5qiOh4iZ902dce7d7sPaKOmZy3pH92fCqL6mDwAfnPtIIC3ZjRDUlFCVsMhALMTUv/exec
+**رابط الواجهة (GitHub):** https://osamamaklad-bit.github.io/qpo-accounting-app/
+
+**رابط الواجهة (Apps Script):** https://script.google.com/macros/s/AKfycby5qiOh4iZ902dce7d7sPaKOmZy3pH92fCqL6mDwAfnPtIIC3ZjRDUlFCVsMhALMTUv/exec
 
 مشروع Google Apps Script واحد بيجمع كل أتمتة QuickBooks Online لـ PetFriend Stores، وليه واجهة إدارة واحدة محمية بكلمة سر.
 
@@ -48,6 +50,14 @@
    - `DEPLOYMENT_ID` (اختياري) = الجزء اللي بين `/s/` و `/exec` في رابط الـ Web app
 
 ⚠️ `clasp push` بيخلي ملفات مشروع Apps Script مطابقة لـ `src/` بالظبط: أي ملف في المحرر مش موجود هنا هيتمسح.
+
+## الواجهة على GitHub Pages
+
+نفس `src/Index.html` بيتنشر على GitHub Pages (`.github/workflows/pages.yml`) مع كل تعديل على `main`،
+وبيكلم السكريبت عن طريق `POST /exec?src=ui` (`uiApi_` في `Core.gs`). كلمة السر والجلسات زي ما هي.
+
+إعداد مرة واحدة: Settings ← Pages ← Source = **GitHub Actions**.
+لازم آخر نسخة من `Core.gs` تكون متنشرة على Apps Script، وإلا الواجهة هتقول "تعذّر الاتصال بالسكريبت".
 
 ## النشر من جهازك (أو من Claude Code)
 

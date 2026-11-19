@@ -3,6 +3,9 @@
 <head>
 <base target="_top">
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PetFriend • QBO</title>
+<link rel="icon" href="https://cdn.shopify.com/s/files/1/0690/9218/0245/files/Logo_32_-_32_Pix-01.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -159,12 +162,20 @@ function $(id){ return document.getElementById(id); }
 function toast(msg, ms){ const t=$('toast'); t.textContent=msg; t.classList.remove('hidden'); clearTimeout(t._h); if(ms!==0) t._h=setTimeout(()=>t.classList.add('hidden'), ms||3500); }
 function errMsg(e){ return String((e && e.message) || e).replace(/^Error:\s*/,''); }
 
+// جوه Apps Script بنستخدم google.script.run، وبرة (GitHub Pages) بنكلم رابط /exec مباشرة
+const API_URL = 'https://script.google.com/macros/s/AKfycby5qiOh4iZ902dce7d7sPaKOmZy3pH92fCqL6mDwAfnPtIIC3ZjRDUlFCVsMhALMTUv/exec?src=ui';
+const IN_GAS = !!(window.google && google.script && google.script.run);
+
 function call(fn, ...args){
-  return new Promise((res, rej) => {
-    google.script.run.withSuccessHandler(res).withFailureHandler(e => {
-      if (errMsg(e) === 'AUTH') { showLogin('انتهت الجلسة، ادخل تاني'); }
-      rej(e);
-    })[fn](...args);
+  const p = IN_GAS
+    ? new Promise((res, rej) => { google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...args); })
+    : fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({fn, args}) })
+        .catch(() => { throw new Error('تعذّر الاتصال بالسكريبت. تأكد إن آخر نسخة من Core.gs متنشرة على Apps Script.'); })
+        .then(r => r.json().catch(() => { throw new Error('رد غير متوقع من السكريبت (HTTP ' + r.status + ')'); }))
+        .then(d => { if (!d.ok) throw new Error(d.error); return d.result; });
+  return p.catch(e => {
+    if (errMsg(e) === 'AUTH') { showLogin('انتهت الجلسة، ادخل تاني'); }
+    throw e;
   });
 }
 
