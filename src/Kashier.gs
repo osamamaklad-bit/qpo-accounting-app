@@ -17,7 +17,7 @@
 // Run from the editor or the dashboard (respects KASHIER_PAYOUT_DRY_RUN)
 function kashierPayoutRun() {
   const r = kashierSyncPayouts_();
-  console.log(JSON.stringify(r));
+  out_('', JSON.stringify(r));
   return r;
 }
 
@@ -33,9 +33,9 @@ function checkKashierProps() {
     'KASHIER_FEES_ACC_ID', 'KASHIER_QBO_CLEARING_ACC_ID', 'QBO_UNDEPOSITED_FUNDS_ACCOUNT_ID',
     'KASHIER_PAYOUT_START_DATE', 'KASHIER_PAYOUT_DRY_RUN'];
   const optional = ['KASHIER_AUTH_HEADER', 'KASHIER_LOGIN_URL', 'KASHIER_LOGIN_BODY', 'KASHIER_TOKEN_FIELD'];
-  need.forEach(k => console.log((P.getProperty(k) ? 'OK       ' : 'MISSING  ') + k));
-  optional.forEach(k => console.log((P.getProperty(k) ? 'OK       ' : 'not set  ') + k + ' (optional)'));
-  console.log('DRY RUN is ' + (kashierDryRun_() ? 'ON (nothing is posted)' : 'OFF (journals are POSTED to QBO)'));
+  need.forEach(k => out_('', (P.getProperty(k) ? 'OK       ' : 'MISSING  ') + k));
+  optional.forEach(k => out_('', (P.getProperty(k) ? 'OK       ' : 'not set  ') + k + ' (optional)'));
+  out_('', 'DRY RUN is ' + (kashierDryRun_() ? 'ON (nothing is posted)' : 'OFF (journals are POSTED to QBO)'));
 }
 
 // ---------- Small helpers ----------
@@ -109,9 +109,13 @@ function kashierGet_(url) {
 // Shows when the current token expires (prints no secret)
 function kashierTokenExpiry() {
   const t = req_('KASHIER_API_KEY').replace(/^Bearer\s+/i, '');
+  if (t.split('.').length !== 3) {
+    out_('WARN', 'KASHIER_API_KEY مش توكن JWT، فمفيش تاريخ انتهاء جواه. لو الروابط بترجع 401 أو 404، هات توكن جديد من لوحة كاشير.');
+    return;
+  }
   const payload = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(t.split('.')[1])).getDataAsString());
-  console.log('issued:  ' + (payload.iat ? new Date(payload.iat * 1000).toISOString() : '?'));
-  console.log('expires: ' + (payload.exp ? new Date(payload.exp * 1000).toISOString() : '?'));
+  out_('', 'issued:  ' + (payload.iat ? new Date(payload.iat * 1000).toISOString() : '?'));
+  out_('', 'expires: ' + (payload.exp ? new Date(payload.exp * 1000).toISOString() : '?'));
 }
 
 // ---------- Kashier API: lists ----------
@@ -221,7 +225,7 @@ function kashierSyncPayouts_() {
         const je = kashierBuildJournal_(po, sts, payByBatch);
 
         if (dry) {
-          console.log(JSON.stringify(je, null, 2));
+          out_('', JSON.stringify(je, null, 2));
           results.push({ payout: po.id, dry: true, settlements: sts.length, lines: je.Line.length });
           return;
         }
@@ -229,7 +233,7 @@ function kashierSyncPayouts_() {
         P.setProperty(key, String(res.JournalEntry.Id));
         results.push({ payout: po.id, qboId: res.JournalEntry.Id, settlements: sts.length, lines: je.Line.length });
       } catch (err) {
-        console.error(err);
+        out_('ERROR', err);
         results.push({ payout: po.id, error: String(err) });
       }
     });
@@ -283,7 +287,7 @@ function kashierBuildJournal_(po, sts, payByBatch) {
     } else {
       // payments missing or not adding up: book the settlement as one line instead
       if (pays.length) {
-        console.warn('Settlement ' + s.id + ': payments ' + paySum + ' != settlement ' + s.gross + ', booked as one line');
+        out_('WARN', 'Settlement ' + s.id + ': payments ' + paySum + ' != settlement ' + s.gross + ', booked as one line');
       }
       add('Credit', UNDEP, s.gross, 'Settlement ' + s.id + (s.method ? ' (' + s.method + ')' : ''));
     }
@@ -313,7 +317,7 @@ function kashierBuildJournal_(po, sts, payByBatch) {
 function kashierListBooked() {
   const all = PropertiesService.getScriptProperties().getProperties();
   Object.keys(all).filter(k => k.indexOf('KASHIER_PAYOUT_BT-') === 0)
-    .forEach(k => console.log(k + ' -> QBO journal ' + all[k]));
+    .forEach(k => out_('', k + ' -> QBO journal ' + all[k]));
 }
 
 // Un-books payouts so a rerun can post them again.
@@ -324,7 +328,7 @@ function kashierClearBooked() {
   ];
   const P = PropertiesService.getScriptProperties();
   ids.forEach(id => P.deleteProperty('KASHIER_PAYOUT_' + id));
-  console.log('cleared ' + ids.length);
+  out_('', 'cleared ' + ids.length);
 }
 
 // Reads one journal back from QBO (posts nothing)
@@ -335,7 +339,7 @@ function kashierCheckJournal() {
     headers: { Authorization: 'Bearer ' + getQboToken_(), Accept: 'application/json' },
     muteHttpExceptions: true
   });
-  console.log(r.getResponseCode() + ' ' + r.getContentText().substring(0, 800));
+  out_('', r.getResponseCode() + ' ' + r.getContentText().substring(0, 800));
 }
 
 // STEP 1: run with DELETE = false. It only shows what it would delete.
@@ -352,18 +356,18 @@ function kashierDeleteBookedJournals() {
   ids.forEach(id => {
     const key = 'KASHIER_PAYOUT_' + id;
     const qboId = P.getProperty(key);
-    if (!qboId) { console.log(id + ': not booked, skipped'); return; }
+    if (!qboId) { out_('', id + ': not booked, skipped'); return; }
 
     const g = UrlFetchApp.fetch(base + '/' + qboId + '?minorversion=70', { headers: hdr, muteHttpExceptions: true });
-    if (g.getResponseCode() !== 200) { console.log(id + ': cannot read QBO ' + qboId + ' -> ' + g.getResponseCode()); return; }
+    if (g.getResponseCode() !== 200) { out_('', id + ': cannot read QBO ' + qboId + ' -> ' + g.getResponseCode()); return; }
     const je = JSON.parse(g.getContentText()).JournalEntry;
 
     // safety: only delete a journal that really belongs to this payout
     if (String(je.PrivateNote || '').indexOf(id) === -1) {
-      console.log(id + ': QBO ' + qboId + ' does not match this payout, skipped');
+      out_('', id + ': QBO ' + qboId + ' does not match this payout, skipped');
       return;
     }
-    console.log(id + ': QBO ' + qboId + ' | ' + je.DocNumber + ' | ' + je.TxnDate + ' | lines=' + je.Line.length);
+    out_('', id + ': QBO ' + qboId + ' | ' + je.DocNumber + ' | ' + je.TxnDate + ' | lines=' + je.Line.length);
     if (!DELETE) return;
 
     const d = UrlFetchApp.fetch(base + '?operation=delete&minorversion=70', {
@@ -373,9 +377,9 @@ function kashierDeleteBookedJournals() {
     });
     if (d.getResponseCode() < 300) {
       P.deleteProperty(key);
-      console.log(id + ': DELETED');
+      out_('', id + ': DELETED');
     } else {
-      console.log(id + ': delete failed ' + d.getResponseCode() + ' ' + d.getContentText().substring(0, 200));
+      out_('', id + ': delete failed ' + d.getResponseCode() + ' ' + d.getContentText().substring(0, 200));
     }
   });
 }
@@ -395,7 +399,7 @@ function kashierTestPublicApi() {
   let ledgerBody = null;
   Object.keys(tests).forEach(k => {
     const r = get(tests[k]);
-    console.log(k + ' -> ' + r.getResponseCode() + ' ' + r.getContentText().substring(0, 140));
+    out_('', k + ' -> ' + r.getResponseCode() + ' ' + r.getContentText().substring(0, 140));
     if (k === 'ledger' && r.getResponseCode() === 200) ledgerBody = JSON.parse(r.getContentText());
   });
 
@@ -404,7 +408,7 @@ function kashierTestPublicApi() {
     const po = rows(ledgerBody).find(x => x.operation === 'payout');
     if (po) {
       const r = get('/v2/balance/payout-details/' + po._id + '?page=1&limit=20');
-      console.log('payout-details (' + po.originReference + ') -> ' + r.getResponseCode() + ' ' + r.getContentText().substring(0, 400));
+      out_('', 'payout-details (' + po.originReference + ') -> ' + r.getResponseCode() + ' ' + r.getContentText().substring(0, 400));
     }
   }
 }
@@ -412,9 +416,9 @@ function kashierTestPublicApi() {
 function kashierCheckUrls() {
   ['KASHIER_API_URL', 'KASHIER_SETTLEMENTS_URL', 'KASHIER_PAYMENTS_URL'].forEach(name => {
     const url = kashierProp_(name);
-    if (!url) { console.log(name + ': MISSING'); return; }
+    if (!url) { out_('', name + ': MISSING'); return; }
     const r = kashierGet_(url);
-    console.log(name + ' -> ' + r.getResponseCode() + ' | ' + url.split('?')[0]);
+    out_('', name + ' -> ' + r.getResponseCode() + ' | ' + url.split('?')[0]);
   });
 }
 
@@ -428,14 +432,14 @@ function kashierCheckShapes() {
   const count = (list, f) => list.reduce((m, x) => { const k = f(x); m[k] = (m[k] || 0) + 1; return m; }, {});
 
   const po = load('KASHIER_API_URL'), st = load('KASHIER_SETTLEMENTS_URL'), pay = load('KASHIER_PAYMENTS_URL');
-  console.log('payouts url rows: ' + po.length + ' | by operation: ' + JSON.stringify(count(po, x => x.operation)));
-  console.log('settlements url rows: ' + st.length + ' | by operation: ' + JSON.stringify(count(st, x => x.operation)));
-  console.log('payments rows: ' + pay.length);
+  out_('', 'payouts url rows: ' + po.length + ' | by operation: ' + JSON.stringify(count(po, x => x.operation)));
+  out_('', 'settlements url rows: ' + st.length + ' | by operation: ' + JSON.stringify(count(st, x => x.operation)));
+  out_('', 'payments rows: ' + pay.length);
 
   const need = ['transactionId', 'type', 'status', 'lastStatus', 'amount', 'orderReference', 'settlementBatchId', 'date'];
-  console.log('payment fields missing on first row: ' +
+  out_('', 'payment fields missing on first row: ' +
     (pay[0] ? (need.filter(k => pay[0][k] === undefined).join(',') || 'none') : 'no rows'));
-  console.log('payments approved+captured: ' + pay.filter(t => t.type === 'PAYMENT' && t.status === 'Approved' && t.lastStatus === 'CAPTURED').length +
+  out_('', 'payments approved+captured: ' + pay.filter(t => t.type === 'PAYMENT' && t.status === 'Approved' && t.lastStatus === 'CAPTURED').length +
     ' | with settlementBatchId: ' + pay.filter(t => t.settlementBatchId).length);
 }
 
@@ -444,14 +448,14 @@ function kashierCheckPaging() {
     const url = kashierProp_(name).replace(/([?&])page=\d+/i, '$1page=1');
     const r = kashierGet_(url);
     const b = JSON.parse(r.getContentText());
-    console.log(name + ' -> pagination: ' + JSON.stringify(b.pagination) + ' | top keys: ' + Object.keys(b).join(','));
+    out_('', name + ' -> pagination: ' + JSON.stringify(b.pagination) + ' | top keys: ' + Object.keys(b).join(','));
   });
 }
 
 function kashierShowPaymentsQuery() {
   const url = kashierProp_('KASHIER_PAYMENTS_URL');
-  console.log('path: ' + url.split('?')[0]);
-  (url.split('?')[1] || '').split('&').forEach(p => console.log('  ' + p));
+  out_('', 'path: ' + url.split('?')[0]);
+  (url.split('?')[1] || '').split('&').forEach(p => out_('', '  ' + p));
 }
 
 // Rebuilds the payments URL with a rolling date range, ignoring the dates saved in the property
@@ -466,18 +470,18 @@ function kashierPaymentsUrl_(fromYmd) {
 
 function kashierWhyEmpty() {
   const start = kashierStartDate_();
-  console.log('start date: [' + start + '] | dry run: ' + kashierDryRun_());
+  out_('', 'start date: [' + start + '] | dry run: ' + kashierDryRun_());
 
   const raw = kashierFetchList_(kashierProp_('KASHIER_API_URL'), kashierShiftDate_(start, -10), 'valueDate');
   const po = raw.filter(t => t.operation === 'payout');
   const tally = {};
   po.forEach(t => { const k = String(t.isReflected); tally[k] = (tally[k] || 0) + 1; });
-  console.log('rows fetched: ' + raw.length + ' | payouts: ' + po.length + ' | isReflected values: ' + JSON.stringify(tally));
-  if (po[0]) console.log('payout fields: ' + Object.keys(po[0]).join(','));
+  out_('', 'rows fetched: ' + raw.length + ' | payouts: ' + po.length + ' | isReflected values: ' + JSON.stringify(tally));
+  if (po[0]) out_('', 'payout fields: ' + Object.keys(po[0]).join(','));
 
   po.sort((a, b) => a.valueDate < b.valueDate ? -1 : 1).forEach(t => {
     const booked = kashierProp_('KASHIER_PAYOUT_' + t.originReference);
-    console.log(t.originReference + ' | ' + t.valueDate + ' | reflected=' + t.isReflected +
+    out_('', t.originReference + ' | ' + t.valueDate + ' | reflected=' + t.isReflected +
       ' | ' + (booked ? 'BOOKED (QBO ' + booked + ')' : 'not booked') +
       ' | ' + (kashierCairoDay_(t.valueDate) < start ? 'before start date' : 'in range'));
   });

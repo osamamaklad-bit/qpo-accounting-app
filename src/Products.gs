@@ -274,7 +274,7 @@ function pqRun_(options) {
   for (let i = 0; i < variants.length; i++) {
     if (Date.now() - startedAt > PQ.MAX_RUN_MS) {
       summary.timedOut = true;         // just run again: finished items cost no API calls
-      console.warn('WARN: وقفت قبل حد الـ 6 دقايق بعد ' + i + ' من ' + variants.length + ' منتج. دوس الزرار تاني عشان تكمّل.');
+      out_('WARN', 'WARN: وقفت قبل حد الـ 6 دقايق بعد ' + i + ' من ' + variants.length + ' منتج. دوس الزرار تاني عشان تكمّل.');
       break;
     }
 

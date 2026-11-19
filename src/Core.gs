@@ -106,6 +106,7 @@ const JOBS = [
     actions: [
       { fn: 'pqSyncAll', label: 'زامن المنتجات الآن (شوبيفاي ← QBO)', confirm: true },
       { fn: 'pqDryRun', label: 'تجربة (بدون تعديل)' },
+      { fn: 'debugShopifyToken', label: 'فحص اتصال شوبيفاي' },
       { fn: 'pqClearQueue', label: 'مسح الطابور القديم', confirm: true }
     ],
     triggers: [
@@ -156,7 +157,7 @@ function pqClearQueue() {
   const P = PropertiesService.getScriptProperties();
   const keys = pqQueueKeys_();
   keys.forEach(function (k) { P.deleteProperty(k); });
-  console.log('Cleared ' + keys.length + ' queued products');
+  out_('', 'Cleared ' + keys.length + ' queued products');
 }
 
 /* ============================================================
@@ -248,7 +249,6 @@ function runLogged_(jobId, source, action, fn) {
 
     const buf = [];
     const t0 = Date.now();
-    const restore = hookConsole_(buf);
     try { Logger.clear(); } catch (x) {}
 
     let result, error = '';
@@ -257,8 +257,6 @@ function runLogged_(jobId, source, action, fn) {
     } catch (err) {
       error = String((err && err.message) || err);
       buf.push('ERROR: ' + ((err && err.stack) || err));
-    } finally {
-      restore();
     }
 
     let lg = '';
@@ -266,7 +264,7 @@ function runLogged_(jobId, source, action, fn) {
     const text = ((lg ? lg + '\n' : '') + buf.join('\n')).trim();
     const resText = resultText_(result);
     const status = error ? 'error'
-      : /"error"\s*:|FAILED|Failed |(^|\n)WARN: |"timedOut":true/.test(resText + '\n' + text) ? 'warn' : 'ok';
+      : /"error"\s*:|FAILED|Failed |WARN: |"timedOut":true/.test(resText + '\n' + text) ? 'warn' : 'ok';
     const lines = text.split('\n').filter(String);
     const summary = (error || resText || lines[lines.length - 1] || 'تم بدون مخرجات').substring(0, 300);
     const secs = Math.round((Date.now() - t0) / 100) / 10;
@@ -284,25 +282,15 @@ function runLogged_(jobId, source, action, fn) {
   }
 }
 
-function hookConsole_(buf) {
-  const saved = {};
-  ['log', 'info', 'warn', 'error'].forEach(function (k) {
-    saved[k] = console[k];
-    try {
-      console[k] = function () {
-        try {
-          buf.push((k === 'log' || k === 'info' ? '' : k.toUpperCase() + ': ') +
-            Array.prototype.map.call(arguments, function (a) {
-              return typeof a === 'string' ? a : JSON.stringify(a);
-            }).join(' '));
-        } catch (x) {}
-        return saved[k].apply(console, arguments);
-      };
-    } catch (x) {}
-  });
-  return function () {
-    Object.keys(saved).forEach(function (k) { try { console[k] = saved[k]; } catch (x) {} });
-  };
+// كل السكريبتات بتكتب هنا بدل console.log: Logger هو اللي بيوصل لسجل الواجهة
+// (تبديل console.log مش بيشتغل في Apps Script، فاللوج كان بيضيع)
+function out_(level) {
+  const msg = Array.prototype.slice.call(arguments, 1).map(function (a) {
+    if (typeof a === 'string') return a;
+    if (a instanceof Error) return a.stack || String(a);
+    try { return JSON.stringify(a); } catch (x) { return String(a); }
+  }).join(' ');
+  Logger.log((level ? level + ': ' : '') + msg);
 }
 
 function resultText_(r) {
@@ -346,7 +334,7 @@ function writeLog_(row) {
     const last = sh.getLastRow();
     if (last > APP.LOG_KEEP + 1) sh.deleteRows(2, last - APP.LOG_KEEP - 1);   // أقدم صفوف
   } catch (err) {
-    console.error('Log write failed: ' + err);
+    out_('ERROR', 'Log write failed: ' + err);
   }
 }
 
@@ -357,7 +345,7 @@ function finishLog_(id, row) {
     if (!cell) return writeLog_(row);
     sh.getRange(cell.getRow(), 1, 1, row.length).setValues([logRow_(row)]);
   } catch (err) {
-    console.error('Log update failed: ' + err);
+    out_('ERROR', 'Log update failed: ' + err);
   }
 }
 

@@ -11,14 +11,14 @@
 function handleBostaWebhook_(e) {
   if (!e || !e.parameter) throw new Error('Run via the web app URL. To test from the editor, run runSync.');
   if (e.parameter.token !== req_('BOSTA_WEBHOOK_TOKEN')) return json_({ ok: false, error: 'unauthorized' });
-  console.log('Bosta webhook body: ' + (e.postData ? e.postData.contents : ''));
+  out_('', 'Bosta webhook body: ' + (e.postData ? e.postData.contents : ''));
   return json_(syncBostaPayouts_()); // webhook is only a "ping"
 }
 
 // Run from the editor or the dashboard (respects BOSTA_DRY_RUN)
 function runSync() {
   const r = syncBostaPayouts_();
-  console.log(JSON.stringify(r));
+  out_('', JSON.stringify(r));
   return r;
 }
 
@@ -34,7 +34,7 @@ function checkProps() {
     'BOSTA_PAYOUT_ORDERS_URL','BOSTA_PAYOUT_START_DATE','BOSTA_DRY_RUN','QBO_CLIENT_ID','QBO_CLIENT_SECRET',
     'QBO_REFRESH_TOKEN','QBO_REALM_ID','QBO_BOSTA_CLEARING_ACCOUNT_ID','QBO_BOSTA_FEES_ACCOUNT_ID',
     'QBO_UNDEPOSITED_FUNDS_ACCOUNT_ID'];
-  need.forEach(k => console.log((P.getProperty(k) ? 'OK       ' : 'MISSING  ') + k));
+  need.forEach(k => out_('', (P.getProperty(k) ? 'OK       ' : 'MISSING  ') + k));
 }
 
 // ---------- Main sync ----------
@@ -66,7 +66,7 @@ function syncBostaPayouts_() {
         const je = buildBostaPayoutJournal_(po, extras, orders);
 
         if (dry) {
-          console.log(JSON.stringify(je, null, 2));
+          out_('', JSON.stringify(je, null, 2));
           results.push({ payout: po.transaction_id, dry: true, lines: je.Line.length });
           return;
         }
@@ -74,7 +74,7 @@ function syncBostaPayouts_() {
         P.setProperty(key, String(res.JournalEntry.Id));
         results.push({ payout: po.transaction_id, qboId: res.JournalEntry.Id });
       } catch (err) {
-        console.error(err);
+        out_('ERROR', err);
         results.push({ payout: po.transaction_id, error: String(err) });
       }
     });
@@ -110,7 +110,7 @@ function fetchPaged_(baseUrl, maxPages) {
   for (let p = 1; p <= maxPages; p++) {
     // Bosta needs page & pageSize BEFORE the other params
     const url = parts[0] + '?page=' + p + '&pageSize=50' + (qs.length ? '&' + qs.join('&') : '');
-    if (p === 1) console.log('Bosta GET ' + url);
+    if (p === 1) out_('', 'Bosta GET ' + url);
     const r = UrlFetchApp.fetch(url, { headers: bostaHeaders_(), muteHttpExceptions: true });
     if (r.getResponseCode() !== 200) throw new Error('Bosta ' + r.getResponseCode() + ': ' + r.getContentText().substring(0, 300));
     const body = JSON.parse(r.getContentText());
@@ -148,13 +148,13 @@ function testOnePayout() {
   const orders = fetchBostaPayoutOrders_(ID);
   const je = buildBostaPayoutJournal_(po, extras, orders);
 
-  console.log(JSON.stringify(je, null, 2));
-  console.log('Lines: ' + je.Line.length + ' | orders: ' + orders.length + ' | extras: ' + extras.length);
+  out_('', JSON.stringify(je, null, 2));
+  out_('', 'Lines: ' + je.Line.length + ' | orders: ' + orders.length + ' | extras: ' + extras.length);
 
-  if (!LIVE) { console.log('DRY: nothing posted. Set LIVE = true to post.'); return; }
+  if (!LIVE) { out_('', 'DRY: nothing posted. Set LIVE = true to post.'); return; }
   const res = qboPost_('journalentry', je);
   P.setProperty(key, String(res.JournalEntry.Id));
-  console.log('POSTED to QBO, journal id ' + res.JournalEntry.Id + ', DocNumber ' + je.DocNumber);
+  out_('', 'POSTED to QBO, journal id ' + res.JournalEntry.Id + ', DocNumber ' + je.DocNumber);
 }
 
 function fetchBostaTransactions_(maxPages) {
@@ -306,6 +306,6 @@ function testCycles() {
       if (d && d.list) info = 'OK rows=' + d.list.length + ' total=' + d.total +
         ' first=' + (d.list[0] ? Object.keys(d.list[0]).slice(0, 8).join(',') : '-');
     } catch (e) {}
-    console.log(k + ' -> ' + r.getResponseCode() + ' ' + info);
+    out_('', k + ' -> ' + r.getResponseCode() + ' ' + info);
   });
 }

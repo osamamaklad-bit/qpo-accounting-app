@@ -96,7 +96,7 @@ function gadsSync50(dryRun) {
     events.push({kind: 'EXP', day: day, amt: Math.round(byDay[day] * 100) / 100, signed: 1, key: day, text: 'spend'});
   });
 
-  if (badDates) console.warn('WARN: ' + badDates + ' صف اتخطّى لأن التاريخ مش مفهوم. خلي عمود Date تاريخ حقيقي أو بصيغة yyyy-MM-dd.');
+  if (badDates) out_('WARN', 'WARN: ' + badDates + ' صف اتخطّى لأن التاريخ مش مفهوم. خلي عمود Date تاريخ حقيقي أو بصيغة yyyy-MM-dd.');
 
   // 2) أحدث 50 حركة
   events.sort(function (a, b) { return a.day < b.day ? 1 : a.day > b.day ? -1 : 0; });
