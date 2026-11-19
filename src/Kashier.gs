@@ -130,8 +130,10 @@ function kashierFetchList_(baseUrl, stopBefore, dateField) {
   for (let p = 1; p <= 30; p++) {
     const url = parts[0] + '?' + qs.concat('page=' + p).join('&');
     const r = kashierGet_(url);
+    if (r.getResponseCode() === 404 && p > 1) break;          // بعض روابط كاشير بترجع 404 بعد آخر صفحة
     if (r.getResponseCode() !== 200) {
-      throw new Error('Kashier ' + r.getResponseCode() + ': ' + r.getContentText().substring(0, 300));
+      throw new Error('Kashier ' + r.getResponseCode() + ' on ' + parts[0].replace(/^https?:\/\/[^/]+/, '') + ' page ' + p + ': ' +
+        r.getContentText().replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').substring(0, 200));
     }
     const body = JSON.parse(r.getContentText());
     const list = Array.isArray(body.data) ? body.data : Array.isArray(body.body) ? body.body : null;
