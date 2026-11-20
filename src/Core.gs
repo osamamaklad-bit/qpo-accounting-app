@@ -25,7 +25,8 @@ const APP = {
 
 const GROUPS = [
   { id: 'A', name: 'المشتريات والإعلانات', name_en: 'Purchasing & Ads' },
-  { id: 'B', name: 'التحصيلات والمنتجات', name_en: 'Collections & Products' }
+  { id: 'B', name: 'التحصيلات والمنتجات', name_en: 'Collections & Products' },
+  { id: 'C', name: 'الرواتب والإيجارات', name_en: 'Payroll & Rent' }
 ];
 
 // ---------- كل السكريبتات ----------
@@ -120,6 +121,19 @@ const JOBS = [
     ],
     props: ['QBO_INCOME_ACCOUNT_ID', 'QBO_EXPENSE_ACCOUNT_ID', 'QBO_ASSET_ACCOUNT_ID',
       'QBO_INV_START_DATE', 'SHEET_ID']
+  },
+  {
+    id: 'payroll', group: 'C', name: 'الرواتب والإيجارات ← قيود QBO', name_en: 'Payroll & rent → QBO journals',
+    desc: 'إيجارات ورواتب من الصندوق أو البنك، شهري أو يدوي، مع خصم جزاء أو سلفة. البنود بتتعدل من تاب "الرواتب".',
+    desc_en: 'Rent and salaries paid from cash or bank, monthly or manual, with a penalty or advance deduction. Edit the lines in the Payroll tab.',
+    dryKey: 'PAYROLL_DRY_RUN',
+    actions: [
+      { fn: 'payrollPreview', label: 'تجربة الشهر ده', label_en: 'Preview this month' },
+      { fn: 'payrollRunDue', label: 'ادفع المستحق الآن', label_en: 'Pay what is due now', post: true }
+    ],
+    triggers: [{ fn: 'cron_payroll', label: 'يومياً (البنود الشهرية في ميعادها)', label_en: 'Daily (monthly lines on their day)', type: 'daily', hour: 9 }],
+    props: ['QBO_RENT_EXPENSE_ACCOUNT_ID', 'QBO_SALARY_EXPENSE_ACCOUNT_ID', 'QBO_CASH_ACCOUNT_ID', 'QBO_BANK_ACCOUNT_ID',
+      'QBO_PENALTIES_ACCOUNT_ID', 'QBO_ADVANCES_ACCOUNT_ID', 'PAYROLL_DRY_RUN']
   }
 ];
 
@@ -128,7 +142,7 @@ const SHARED_PROPS = ['GO_LIVE_DATE', 'QBO_CLIENT_ID', 'QBO_CLIENT_SECRET', 'QBO
 
 const SECRET_KEYS = ['QBO_CLIENT_SECRET', 'QBO_REFRESH_TOKEN', 'CLIENT_SECRET', 'CLIENT_SECRET_QBO', 'META_TOKEN',
   'BOSTA_API_KEY', 'BOSTA_WEBHOOK_TOKEN', 'KASHIER_API_KEY', 'KASHIER_LOGIN_BODY', 'KASHIER_TEST_KEY', 'WEBHOOK_KEY'];
-const BOOL_KEYS = ['BOSTA_DRY_RUN', 'KASHIER_PAYOUT_DRY_RUN'];
+const BOOL_KEYS = ['BOSTA_DRY_RUN', 'KASHIER_PAYOUT_DRY_RUN', 'PAYROLL_DRY_RUN'];
 
 // ---------- تاريخ البدء الفعلي ----------
 // GO_LIVE_DATE (yyyy-MM-dd): أي حركة قبله مش بتترحّل في أي سكريبت. فاضي = مفيش حد.
@@ -148,6 +162,7 @@ function cron_meta()    { cronRun_('meta', 'metaChargesPost'); }
 function cron_bosta()   { cronRun_('bosta', 'dailySync'); }
 function cron_kashier() { cronRun_('kashier', 'kashierPayoutDaily'); }
 function cron_pqDaily() { cronRun_('products', 'pqSyncAll'); }
+function cron_payroll() { cronRun_('payroll', 'payrollRunDue'); }
 // اتلغى: المنتجات بقت بتتزامن مرة في اليوم أو يدوي.
 // لو الموعد القديم (كل دقيقة) لسه موجود، أول ما يشتغل بيمسح نفسه.
 function cron_pqQueue() {
@@ -202,7 +217,8 @@ function doPost(e) {
 // كل دالة هنا بتتحقق من التوكن بنفسها (auth_) ما عدا الدخول والخروج.
 const UI_API = ['api_login', 'api_logout', 'api_changePassword', 'api_state', 'api_runAction', 'api_setTrigger',
   'api_deleteTrigger', 'api_logs', 'api_logDetail', 'api_settings', 'api_saveSettings', 'api_qboAccounts',
-  'api_testConnections', 'api_importProps', 'api_cleanupProps', 'api_healthCheck'];
+  'api_testConnections', 'api_importProps', 'api_cleanupProps', 'api_healthCheck',
+  'api_payroll', 'api_payrollSave', 'api_payrollPay', 'api_payrollAdvance'];
 
 function uiApi_(e) {
   let out;
@@ -764,7 +780,7 @@ function api_testConnections(t) {
 // بيتمسح أي مفتاح مش في الإعدادات (المشتركة + إعدادات كل سكريبت) ومش من بيانات الحالة.
 // بيانات الحالة (اللي اترحّل قبل كده، الجلسات، السجل) عمرها ما بتتمسح عشان القيود ما تتكررش.
 const STATE_KEYS = ['PROCESSED', 'GADS_DAYS_PROCESSED', 'GADS_TX_PROCESSED', 'META_CHARGES_PROCESSED',
-  'META_INVOICES_PROCESSED'];
+  'META_INVOICES_PROCESSED', 'PAYROLL_ITEMS', 'PAYROLL_POSTED'];
 
 function keepProp_(k) {
   if (/^APP_/.test(k)) return true;                                   // كلمة السر والجلسات والسجل والمواعيد

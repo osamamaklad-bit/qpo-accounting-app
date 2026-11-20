@@ -185,6 +185,20 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .row label{display:flex;align-items:center;gap:8px}
 .row input[type=checkbox]{width:auto;accent-color:var(--red)}
 
+/* payroll */
+main > section,#payBody,#logsBody,.tablewrap{min-width:0;max-width:100%}
+.paytable{min-width:1300px}
+.paytable td{vertical-align:middle;padding:8px 8px}
+.paytable input,.paytable select{padding:6px 8px;border-radius:10px;font-size:13px}
+.paytable input[type=number]{width:96px}
+.paytable select{min-width:96px;padding-inline-end:26px}
+.paytable .ded select{min-width:104px}
+.paytable .ded{display:flex;gap:4px}
+.paytable .ded select{width:auto}.paytable .ded input[type=number]{width:80px}.paytable .ded input[type=text]{width:110px}
+.paytable tfoot td{font-weight:700;background:#fbf8f6}
+.paytable tr.dirty td{background:var(--cyan-soft)}
+.warnbox{background:var(--warn-soft);color:var(--warn);border-radius:14px;padding:10px 14px;font-size:13px;font-weight:600}
+
 /* modal + toast */
 .modal{position:fixed;inset:0;background:rgba(27,41,77,.45);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
 .modal .box{background:var(--surface);border-radius:22px;box-shadow:var(--shadow);width:min(920px,100%);max-height:90vh;display:flex;flex-direction:column;padding:20px;gap:8px}
@@ -225,6 +239,7 @@ pre{background:var(--navy);color:#e9f0ff;padding:14px;border-radius:14px;overflo
       </div>
       <nav>
         <button data-tab="home" onclick="showTab('home')" data-i="tabHome"></button>
+        <button data-tab="payroll" onclick="showTab('payroll')" data-i="tabPayroll"></button>
         <button data-tab="logs" onclick="showTab('logs')" data-i="tabLogs"></button>
         <button data-tab="settings" onclick="showTab('settings')" data-i="tabSettings"></button>
         <button data-tab="account" onclick="showTab('account')" data-i="tabAccount"></button>
@@ -239,6 +254,22 @@ pre{background:var(--navy);color:#e9f0ff;padding:14px;border-radius:14px;overflo
 
   <main>
     <section id="tab-home"></section>
+
+    <section id="tab-payroll" class="hidden" style="display:grid;gap:16px">
+      <div class="toolbar">
+        <button class="pri" id="paySaveBtn" onclick="savePayroll()"></button>
+        <button onclick="addPayRow()" data-i="payAdd"></button>
+        <button onclick="$('payQuick').classList.toggle('hidden')" data-i="payQuickBtn"></button>
+        <span id="payInfo" class="badge"></span>
+      </div>
+      <div id="payWarn"></div>
+      <div id="payQuick" class="card hidden">
+        <div class="desc" data-i="payQuickDesc"></div>
+        <textarea id="payQuickText" style="direction:rtl;text-align:right" placeholder="ايجار ... 2000&#10;راتب ... 5500"></textarea>
+        <div class="row"><button class="pri" onclick="quickAddPayroll()" data-i="payQuickAdd"></button></div>
+      </div>
+      <div id="payBody"></div>
+    </section>
 
     <section id="tab-logs" class="hidden" style="display:grid;gap:16px">
       <div class="toolbar">
@@ -306,6 +337,17 @@ const I18N = {
   ar: {
     healthTitle:'حالة الاتصالات', healthRun:'افحص الآن', healthNever:'لسه متعملش فحص. دوس "افحص الآن" (مش بيرحّل أي حاجة).',
     healthChecking:'جاري الفحص... (حوالي 20 ثانية)', healthAt:x => `آخر فحص: ${x}`, hOk:'شغال', hWarn:'محتاج انتباه', hErr:'مش شغال',
+    tabPayroll:'الرواتب والإيجارات', payAdd:'إضافة بند', payQuickBtn:'إضافة كذا بند مرة واحدة', payQuickAdd:'أضف البنود',
+    payQuickDesc:'سطر لكل بند: "ايجار" أو "راتب" وبعده الاسم وبعده المبلغ. مثلاً: راتب أحمد علي 3000. هتتضاف بالدفع من الصندوق وشهري يوم 1، وتقدر تعدّلها بعد كده. متنساش تحفظ.',
+    paySave:'حفظ البنود', pType:'النوع', pName:'الاسم', pAmount:'المبلغ', pFrom:'الدفع من', pRec:'التكرار', pDay:'يوم', pDed:'خصم المرة الجاية (رواتب)',
+    pAdv:'رصيد السلفة', pMonth:'الشهر ده', rent:'إيجار', salary:'راتب', cash:'صندوق', bank:'بنك', monthly:'شهري', manualRec:'يدوي',
+    dedNone:'بدون', dedPenalty:'جزاء', dedAdvance:'من السلفة', dedNote:'سبب', paid:'اتدفع', dueOn:d => `مستحق يوم ${d}`, manualOnly:'يدوي',
+    payNow:'ادفع', newAdv:'سلفة', total:'الإجمالي', net:'الصافي', payInfo:(p,n) => `شهر ${p} · ${n} بند`,
+    payMissing:k => `ناقص حسابات في الإعدادات ← الرواتب والإيجارات: ${k}`, payDirty:'عندك تعديلات في البنود مش محفوظة. احفظ الأول.',
+    payConfirm:(n,a) => `${n}: هيتعمل قيد بـ ${a} في QuickBooks. متأكد؟`, payConfirmDry:n => `تجربة (من غير ترحيل) لـ ${n}؟`,
+    advPrompt:n => `مبلغ السلفة الجديدة لـ ${n} (هيتعمل قيد وهيزود رصيد السلفة):`, delRow:n => `حذف بند ${n}؟ (لازم تحفظ بعدها)`,
+    quickAdded:n => `اتضاف ${n} بند. راجعهم واحفظ.`, quickNone:'مفيش سطور مفهومة. اكتب: ايجار/راتب + الاسم + المبلغ.',
+    unsavedPay:'عندك تعديلات في الرواتب مش محفوظة. تسيبها؟', savedOk:'اتحفظ',
     install:'ثبّت التطبيق', otherLang:'English', tagline:'لوحة إدارة القيود والمزامنة', cobrand:'لوحة PetFriend لـ QuickBooks Online',
     writesQb:'الزرار ده بيكتب في QuickBooks', legendPet:'PetFriend', legendQb:'بيكتب في QuickBooks',
     tm:'QuickBooks علامة تجارية مملوكة لـ Intuit Inc. التطبيق ده أداة داخلية لـ PetFriend ومش تابع لـ Intuit.', pw:'كلمة السر', signIn:'دخول', signOut:'خروج',
@@ -348,6 +390,17 @@ const I18N = {
   en: {
     healthTitle:'Connection health', healthRun:'Check now', healthNever:'Not checked yet. Press “Check now” (it posts nothing).',
     healthChecking:'Checking… (about 20 seconds)', healthAt:x => `Last checked: ${x}`, hOk:'Working', hWarn:'Needs attention', hErr:'Not working',
+    tabPayroll:'Payroll & rent', payAdd:'Add line', payQuickBtn:'Add several lines', payQuickAdd:'Add lines',
+    payQuickDesc:'One line each: "rent" or "salary" (or ايجار / راتب), then the name, then the amount. Example: salary Ahmed Ali 3000. They’re added as cash, monthly on day 1; edit them after. Remember to save.',
+    paySave:'Save lines', pType:'Type', pName:'Name', pAmount:'Amount', pFrom:'Paid from', pRec:'Repeat', pDay:'Day', pDed:'Next-payment deduction (salaries)',
+    pAdv:'Advance balance', pMonth:'This month', rent:'Rent', salary:'Salary', cash:'Cash box', bank:'Bank', monthly:'Monthly', manualRec:'Manual',
+    dedNone:'None', dedPenalty:'Penalty', dedAdvance:'From advance', dedNote:'Reason', paid:'Paid', dueOn:d => `Due on day ${d}`, manualOnly:'Manual',
+    payNow:'Pay', newAdv:'Advance', total:'Total', net:'Net', payInfo:(p,n) => `Month ${p} · ${n} lines`,
+    payMissing:k => `Missing accounts in Settings → Payroll & rent: ${k}`, payDirty:'You have unsaved line edits. Save first.',
+    payConfirm:(n,a) => `${n}: a journal of ${a} will be posted to QuickBooks. Continue?`, payConfirmDry:n => `Dry run (no posting) for ${n}?`,
+    advPrompt:n => `New advance amount for ${n} (posts a journal and raises the advance balance):`, delRow:n => `Delete the line for ${n}? (save afterwards)`,
+    quickAdded:n => `Added ${n} line${n===1?'':'s'}. Review and save.`, quickNone:'No lines understood. Write: rent/salary + name + amount.',
+    unsavedPay:'You have unsaved payroll edits. Leave anyway?', savedOk:'Saved',
     install:'Install app', otherLang:'عربي', tagline:'Journals & sync control panel', cobrand:'PetFriend for QuickBooks Online',
     writesQb:'This button writes to QuickBooks', legendPet:'PetFriend', legendQb:'Writes to QuickBooks',
     tm:'QuickBooks is a trademark of Intuit Inc. This is an internal PetFriend tool and is not affiliated with Intuit.', pw:'Password', signIn:'Sign in', signOut:'Sign out',
@@ -403,6 +456,7 @@ function applyLang(){
   ls.innerHTML = `<option value="">${t('anyStatus')}</option>` + ['error','warn','stopped','running','ok'].map(s => `<option value="${s}">${t(s)}</option>`).join('');
   ls.value = cur;
   if ($('saveBtn')) $('saveBtn').textContent = t('saveChanges');
+  $('paySaveBtn').textContent = t('paySave');
   $('pw').placeholder = t('pw'); $('oldPw').placeholder = t('pwOld'); $('newPw').placeholder = t('pwNew'); $('newPw2').placeholder = t('pwNew2');
 }
 function toggleLang(){
@@ -410,6 +464,7 @@ function toggleLang(){
   if (!$('app').classList.contains('hidden')){
     if (STATE) renderHome();
     if (SETTINGS) renderSettings();
+    if (PAYROLL) renderPayroll();
     $('logJob').innerHTML = '';
     if (!$('tab-logs').classList.contains('hidden')) loadLogs();
   }
@@ -455,8 +510,10 @@ function start(){ $('login').classList.add('hidden'); $('app').classList.remove(
 function showTab(name){
   const leaving = !$('tab-settings').classList.contains('hidden') && name !== 'settings';
   if (leaving && SETTINGS){ const n = Object.keys(pendingChanges()).length; if (n && !confirm(t('unsavedLeave', n))) return; }
+  if (!$('tab-payroll').classList.contains('hidden') && name !== 'payroll' && PAY_DIRTY && !confirm(t('unsavedPay'))) return;
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab===name));
-  ['home','logs','settings','account'].forEach(n => $('tab-'+n).classList.toggle('hidden', n!==name));
+  ['home','payroll','logs','settings','account'].forEach(n => $('tab-'+n).classList.toggle('hidden', n!==name));
+  if(name==='payroll') loadPayroll();
   if(name==='home') loadHome();
   if(name==='logs') loadLogs();
   if(name==='settings') loadSettings();
@@ -705,6 +762,13 @@ const HELP = {
   QBO_EXPENSE_ACCOUNT_ID:['حساب تكلفة المبيعات للمنتجات الجديدة.','Cost of goods sold account for new products.'],
   QBO_ASSET_ACCOUNT_ID:['حساب المخزون للمنتجات الجديدة.','Inventory asset account for new products.'],
   QBO_INV_START_DATE:['تاريخ بداية المخزون للمنتجات الجديدة (فاضي = 2026-10-01).','Inventory start date for new products (empty = 2026-10-01).'],
+  QBO_RENT_EXPENSE_ACCOUNT_ID:['حساب مصروف الإيجار.','Rent expense account.'],
+  QBO_SALARY_EXPENSE_ACCOUNT_ID:['حساب مصروف الرواتب (بيتسجل فيه الإجمالي قبل الخصم).','Salaries expense account (gross, before deductions).'],
+  QBO_CASH_ACCOUNT_ID:['حساب الصندوق (Cash on hand).','Cash box account (cash on hand).'],
+  QBO_BANK_ACCOUNT_ID:['حساب البنك اللي بيندفع منه.','Bank account payments are made from.'],
+  QBO_PENALTIES_ACCOUNT_ID:['حساب الجزاءات (إيراد أخرى عادةً).','Penalties account (usually other income).'],
+  QBO_ADVANCES_ACCOUNT_ID:['حساب سلف الموظفين (أصل متداول).','Employee advances account (current asset).'],
+  PAYROLL_DRY_RUN:['true = تجربة من غير ترحيل. false بس = ترحيل فعلي.','true = dry run. Only false posts for real.'],
   SHEET_ID:['شيت مشاكل المزامنة (فاضي = شيت أوامر الشراء).','Sheet for sync issues (empty = the purchase-order sheet).']
 };
 function helpFor(k){ const h = HELP[k]; return h ? h[LANG === 'en' ? 1 : 0] : ''; }
@@ -793,6 +857,118 @@ async function importProps(){
   }catch(e){ $('impRes').textContent = errMsg(e); }
 }
 
+/* ---------- الرواتب والإيجارات / Payroll ---------- */
+let PAYROLL = null, PAY_DIRTY = false;
+const fmt = n => Number(n||0).toLocaleString(LANG === 'en' ? 'en-US' : 'ar-EG', {maximumFractionDigits:2});
+async function loadPayroll(){
+  $('payBody').innerHTML = `<div class="badge">${t('loading')}</div>`;
+  try{ PAYROLL = await call('api_payroll', TOKEN); PAY_DIRTY = false; renderPayroll(); }
+  catch(e){ $('payBody').innerHTML = `<div class="err">${esc(errMsg(e))}</div>`; }
+}
+function opt(v, cur, label){ return `<option value="${v}" ${v===cur?'selected':''}>${esc(label)}</option>`; }
+function renderPayroll(){
+  const P = PAYROLL, items = P.items;
+  $('payInfo').innerHTML = esc(t('payInfo', P.period, items.length)) + (P.dry ? ` <span class="drytag">${t('dry')}</span>` : '');
+  $('payWarn').innerHTML = P.missing.length ? `<div class="warnbox">${esc(t('payMissing', P.missing.join(', ')))}</div>` : '';
+  let tot = {rent:0, salary:0, net:0};
+  let h = `<div class="tablewrap"><table class="paytable"><thead><tr><th>${t('pType')}</th><th>${t('pName')}</th><th>${t('pAmount')}</th><th>${t('pFrom')}</th><th>${t('pRec')}</th><th>${t('pDay')}</th><th>${t('pDed')}</th><th>${t('pAdv')}</th><th>${t('pMonth')}</th><th></th></tr></thead><tbody>`;
+  items.forEach((it, i) => {
+    const sal = it.type === 'salary', d = it.deduction || {kind:'none', amount:0, note:''};
+    let ded = sal && d.kind !== 'none' ? Math.min(d.amount, it.amount) : 0;
+    if (sal && d.kind === 'advance') ded = Math.min(ded, it.advanceBalance || 0);
+    tot[it.type] += Number(it.amount||0); tot.net += Number(it.amount||0) - ded;
+    const paid = P.paid[it.id];
+    h += `<tr data-i="${i}">
+      <td><select data-f="type">${opt('rent',it.type,t('rent'))}${opt('salary',it.type,t('salary'))}</select></td>
+      <td><input data-f="name" value="${esc(it.name)}" style="min-width:150px"></td>
+      <td><input data-f="amount" type="number" min="0" step="0.01" value="${esc(it.amount)}"></td>
+      <td><select data-f="payFrom">${opt('cash',it.payFrom,t('cash'))}${opt('bank',it.payFrom,t('bank'))}</select></td>
+      <td><select data-f="recurrence">${opt('monthly',it.recurrence,t('monthly'))}${opt('manual',it.recurrence,t('manualRec'))}</select></td>
+      <td><input data-f="day" type="number" min="1" max="28" value="${esc(it.day)}" style="width:62px" ${it.recurrence==='manual'?'disabled':''}></td>
+      <td>${sal ? `<div class="ded"><select data-f="dkind">${opt('none',d.kind,t('dedNone'))}${opt('penalty',d.kind,t('dedPenalty'))}${opt('advance',d.kind,t('dedAdvance'))}</select>
+          <input data-f="damount" type="number" min="0" step="0.01" value="${esc(d.amount||0)}" ${d.kind==='none'?'disabled':''}>
+          <input data-f="dnote" type="text" placeholder="${t('dedNote')}" value="${esc(d.note||'')}" ${d.kind==='none'?'disabled':''}></div>` : '<span class="badge">—</span>'}</td>
+      <td class="num">${sal ? fmt(it.advanceBalance||0) : '—'}</td>
+      <td>${paid ? `<span class="pill ok">${t('paid')} · QBO ${esc(paid)}</span>` : `<span class="badge">${it.recurrence==='monthly' ? esc(t('dueOn', it.day)) : t('manualOnly')}</span>`}</td>
+      <td><div class="row" style="flex-wrap:nowrap">
+        <button class="sm ${P.dry?'':'qbpost'}" ${paid?'disabled':''} onclick="payNow('${esc(it.id)}')">${t('payNow')}</button>
+        ${sal ? `<button class="sm" onclick="newAdvance('${esc(it.id)}')">${t('newAdv')}</button>` : ''}
+        <button class="sm danger" onclick="delPayRow(${i})" aria-label="${t('del')}">✕</button></div></td></tr>`;
+  });
+  h += `</tbody><tfoot><tr><td colspan="2">${t('total')}</td><td class="num" colspan="4">${t('rent')}: ${fmt(tot.rent)} · ${t('salary')}: ${fmt(tot.salary)}</td><td colspan="4">${t('net')}: ${fmt(tot.net)}</td></tr></tfoot></table></div>`;
+  $('payBody').innerHTML = h;
+  setPayDirty(PAY_DIRTY);
+}
+function setPayDirty(on){ PAY_DIRTY = on; $('paySaveBtn').innerHTML = esc(t('paySave')) + (on ? '<span class="count">•</span>' : ''); }
+function collectPayroll(){
+  return [...document.querySelectorAll('#payBody tbody tr')].map(tr => {
+    const g = f => { const el = tr.querySelector(`[data-f="${f}"]`); return el ? el.value : ''; };
+    const base = PAYROLL.items[Number(tr.dataset.i)] || {};
+    return { id: base.id || '', type: g('type'), name: g('name').trim(), amount: Number(g('amount')) || 0, payFrom: g('payFrom'),
+      recurrence: g('recurrence'), day: Number(g('day')) || 1, advanceBalance: base.advanceBalance || 0,
+      deduction: { kind: g('dkind') || 'none', amount: Number(g('damount')) || 0, note: g('dnote') } };
+  });
+}
+$('payBody').addEventListener('input', () => setPayDirty(true));
+$('payBody').addEventListener('change', e => {
+  setPayDirty(true);
+  if (['type','recurrence','dkind'].includes(e.target.dataset.f)){ PAYROLL.items = collectPayroll(); renderPayroll(); }
+});
+async function savePayroll(){
+  try{ PAYROLL = await call('api_payrollSave', TOKEN, collectPayroll()); PAY_DIRTY = false; renderPayroll(); toast(t('savedOk')); }
+  catch(e){ toast(errMsg(e), 6000); }
+}
+function addPayRow(){
+  PAYROLL.items = collectPayroll();
+  PAYROLL.items.push({id:'', type:'salary', name:'', amount:0, payFrom:'cash', recurrence:'monthly', day:1, advanceBalance:0, deduction:{kind:'none', amount:0, note:''}});
+  setPayDirty(true); renderPayroll();
+}
+function delPayRow(i){
+  const items = collectPayroll();
+  if (!confirm(t('delRow', items[i].name || '—'))) return;
+  items.splice(i, 1); PAYROLL.items = items; setPayDirty(true); renderPayroll();
+}
+function quickAddPayroll(){
+  const digits = s => s.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+  const lines = digits($('payQuickText').value).split(/\n+/).map(s => s.trim()).filter(Boolean);
+  const add = [];
+  lines.forEach(l => {
+    const m = l.match(/^(ا|إ|أ)?يجار|^rent|^راتب|^salary|^مرتب/i); if (!m) return;
+    const type = /^(ا|إ|أ)?يجار|^rent/i.test(l) ? 'rent' : 'salary';
+    const num = l.match(/([\d.,]+)\s*(ج|جنيه|EGP|LE)?\s*$/i); if (!num) return;
+    const amount = Number(num[1].replace(/,/g, '')); if (!(amount > 0)) return;
+    const name = l.slice(m[0].length, l.length - num[0].length).replace(/^\s*(ل|لـ|ال)?\s*/, '').trim();
+    if (!name) return;
+    add.push({id:'', type, name, amount, payFrom:'cash', recurrence:'monthly', day:1, advanceBalance:0, deduction:{kind:'none', amount:0, note:''}});
+  });
+  if (!add.length){ toast(t('quickNone'), 6000); return; }
+  PAYROLL.items = collectPayroll().concat(add); $('payQuickText').value = ''; $('payQuick').classList.add('hidden');
+  setPayDirty(true); renderPayroll(); toast(t('quickAdded', add.length), 6000);
+}
+async function payNow(id){
+  if (PAY_DIRTY){ toast(t('payDirty'), 6000); return; }
+  if (RUNNING){ toast(t('busy')); return; }
+  const it = PAYROLL.items.find(x => x.id === id); if (!it) return;
+  if (!confirm(PAYROLL.dry ? t('payConfirmDry', it.name) : t('payConfirm', it.name, fmt(it.amount)))) return;
+  RUNNING = true; toast(t('runningToast', it.name), 0);
+  try{ const r = await call('api_payrollPay', TOKEN, id); PAYROLL = r.state; renderPayroll();
+       toast(st(r.status) + ' · ' + r.secs + ' ' + t('secs')); openModal(it.name, `${pill(r.status)} ${esc(r.summary)}`, r.log); }
+  catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000); }
+  finally{ RUNNING = false; }
+}
+async function newAdvance(id){
+  if (PAY_DIRTY){ toast(t('payDirty'), 6000); return; }
+  const it = PAYROLL.items.find(x => x.id === id); if (!it) return;
+  const v = prompt(t('advPrompt', it.name)); if (v === null) return;
+  const amount = Number(String(v).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/,/g, ''));
+  if (!(amount > 0)) return;
+  RUNNING = true; toast(t('runningToast', t('newAdv') + ' ' + it.name), 0);
+  try{ const r = await call('api_payrollAdvance', TOKEN, id, amount); PAYROLL = r.state; renderPayroll();
+       toast(st(r.status)); openModal(t('newAdv') + ' — ' + it.name, `${pill(r.status)} ${esc(r.summary)}`, r.log); }
+  catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000); }
+  finally{ RUNNING = false; }
+}
+
 /* ---------- الحساب / Account ---------- */
 async function changePw(){
   if ($('newPw').value !== $('newPw2').value){ toast(t('pwMismatch')); return; }
@@ -804,7 +980,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 $('settingsBody').addEventListener('input', updatePending);
 $('settingsBody').addEventListener('change', updatePending);
 window.addEventListener('beforeunload', e => {
-  if (SETTINGS && !$('tab-settings').classList.contains('hidden') && Object.keys(pendingChanges()).length){ e.preventDefault(); e.returnValue = ''; }
+  if ((SETTINGS && !$('tab-settings').classList.contains('hidden') && Object.keys(pendingChanges()).length) || PAY_DIRTY){ e.preventDefault(); e.returnValue = ''; }
 });
 
 /* ---------- تطبيق (PWA) / App ---------- */
