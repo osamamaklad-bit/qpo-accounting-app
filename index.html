@@ -260,6 +260,8 @@ pre{background:var(--navy);color:#e9f0ff;padding:14px;border-radius:14px;overflo
         <button class="pri" id="paySaveBtn" onclick="savePayroll()"></button>
         <button onclick="addPayRow()" data-i="payAdd"></button>
         <button onclick="$('payQuick').classList.toggle('hidden')" data-i="payQuickBtn"></button>
+        <button onclick="payPreview()" data-i="payPreview"></button>
+        <button class="ghost sm" onclick="loadPayroll()" data-i="refresh"></button>
         <span id="payInfo" class="badge"></span>
       </div>
       <div id="payWarn"></div>
@@ -337,7 +339,8 @@ const I18N = {
   ar: {
     healthTitle:'حالة الاتصالات', healthRun:'افحص الآن', healthNever:'لسه متعملش فحص. دوس "افحص الآن" (مش بيرحّل أي حاجة).',
     healthChecking:'جاري الفحص... (حوالي 20 ثانية)', healthAt:x => `آخر فحص: ${x}`, hOk:'شغال', hWarn:'محتاج انتباه', hErr:'مش شغال',
-    tabPayroll:'الرواتب والإيجارات', payAdd:'إضافة بند', payQuickBtn:'إضافة كذا بند مرة واحدة', payQuickAdd:'أضف البنود',
+    tabPayroll:'الرواتب والإيجارات', payPreview:'تجربة الشهر ده',
+    advHint:'رصيد السلفة. تقدر تكتب الرصيد الافتتاحي هنا. السلف الجديدة من زرار "سلفة" عشان يتعمل لها قيد.', payAdd:'إضافة بند', payQuickBtn:'إضافة كذا بند مرة واحدة', payQuickAdd:'أضف البنود',
     payQuickDesc:'سطر لكل بند: "ايجار" أو "راتب" وبعده الاسم وبعده المبلغ. مثلاً: راتب أحمد علي 3000. هتتضاف بالدفع من الصندوق وشهري يوم 1، وتقدر تعدّلها بعد كده. متنساش تحفظ.',
     paySave:'حفظ البنود', pType:'النوع', pName:'الاسم', pAmount:'المبلغ', pFrom:'الدفع من', pRec:'التكرار', pDay:'يوم', pDed:'خصم المرة الجاية (رواتب)',
     pAdv:'رصيد السلفة', pMonth:'الشهر ده', rent:'إيجار', salary:'راتب', cash:'صندوق', bank:'بنك', monthly:'شهري', manualRec:'يدوي',
@@ -390,7 +393,8 @@ const I18N = {
   en: {
     healthTitle:'Connection health', healthRun:'Check now', healthNever:'Not checked yet. Press “Check now” (it posts nothing).',
     healthChecking:'Checking… (about 20 seconds)', healthAt:x => `Last checked: ${x}`, hOk:'Working', hWarn:'Needs attention', hErr:'Not working',
-    tabPayroll:'Payroll & rent', payAdd:'Add line', payQuickBtn:'Add several lines', payQuickAdd:'Add lines',
+    tabPayroll:'Payroll & rent', payPreview:'Preview this month',
+    advHint:'Advance balance. You can enter the opening balance here. Record new advances with the Advance button so a journal is posted.', payAdd:'Add line', payQuickBtn:'Add several lines', payQuickAdd:'Add lines',
     payQuickDesc:'One line each: "rent" or "salary" (or ايجار / راتب), then the name, then the amount. Example: salary Ahmed Ali 3000. They’re added as cash, monthly on day 1; edit them after. Remember to save.',
     paySave:'Save lines', pType:'Type', pName:'Name', pAmount:'Amount', pFrom:'Paid from', pRec:'Repeat', pDay:'Day', pDed:'Next-payment deduction (salaries)',
     pAdv:'Advance balance', pMonth:'This month', rent:'Rent', salary:'Salary', cash:'Cash box', bank:'Bank', monthly:'Monthly', manualRec:'Manual',
@@ -888,7 +892,7 @@ function renderPayroll(){
       <td>${sal ? `<div class="ded"><select data-f="dkind">${opt('none',d.kind,t('dedNone'))}${opt('penalty',d.kind,t('dedPenalty'))}${opt('advance',d.kind,t('dedAdvance'))}</select>
           <input data-f="damount" type="number" min="0" step="0.01" value="${esc(d.amount||0)}" ${d.kind==='none'?'disabled':''}>
           <input data-f="dnote" type="text" placeholder="${t('dedNote')}" value="${esc(d.note||'')}" ${d.kind==='none'?'disabled':''}></div>` : '<span class="badge">—</span>'}</td>
-      <td class="num">${sal ? fmt(it.advanceBalance||0) : '—'}</td>
+      <td>${sal ? `<input data-f="adv" type="number" min="0" step="0.01" value="${esc(it.advanceBalance||0)}" title="${esc(t('advHint'))}">` : '—'}</td>
       <td>${paid ? `<span class="pill ok">${t('paid')} · QBO ${esc(paid)}</span>` : `<span class="badge">${it.recurrence==='monthly' ? esc(t('dueOn', it.day)) : t('manualOnly')}</span>`}</td>
       <td><div class="row" style="flex-wrap:nowrap">
         <button class="sm ${P.dry?'':'qbpost'}" ${paid?'disabled':''} onclick="payNow('${esc(it.id)}')">${t('payNow')}</button>
@@ -905,7 +909,7 @@ function collectPayroll(){
     const g = f => { const el = tr.querySelector(`[data-f="${f}"]`); return el ? el.value : ''; };
     const base = PAYROLL.items[Number(tr.dataset.i)] || {};
     return { id: base.id || '', type: g('type'), name: g('name').trim(), amount: Number(g('amount')) || 0, payFrom: g('payFrom'),
-      recurrence: g('recurrence'), day: Number(g('day')) || 1, advanceBalance: base.advanceBalance || 0,
+      recurrence: g('recurrence'), day: Number(g('day')) || 1, advanceBalance: g('adv') === '' ? (base.advanceBalance || 0) : (Number(g('adv')) || 0),
       deduction: { kind: g('dkind') || 'none', amount: Number(g('damount')) || 0, note: g('dnote') } };
   });
 }
@@ -915,8 +919,8 @@ $('payBody').addEventListener('change', e => {
   if (['type','recurrence','dkind'].includes(e.target.dataset.f)){ PAYROLL.items = collectPayroll(); renderPayroll(); }
 });
 async function savePayroll(){
-  try{ PAYROLL = await call('api_payrollSave', TOKEN, collectPayroll()); PAY_DIRTY = false; renderPayroll(); toast(t('savedOk')); }
-  catch(e){ toast(errMsg(e), 6000); }
+  try{ PAYROLL = await call('api_payrollSave', TOKEN, collectPayroll(), PAYROLL.rev); PAY_DIRTY = false; renderPayroll(); toast(t('savedOk')); }
+  catch(e){ toast(errMsg(e), 10000); }
 }
 function addPayRow(){
   PAYROLL.items = collectPayroll();
@@ -944,6 +948,17 @@ function quickAddPayroll(){
   if (!add.length){ toast(t('quickNone'), 6000); return; }
   PAYROLL.items = collectPayroll().concat(add); $('payQuickText').value = ''; $('payQuick').classList.add('hidden');
   setPayDirty(true); renderPayroll(); toast(t('quickAdded', add.length), 6000);
+}
+async function payPreview(){
+  if (PAY_DIRTY){ toast(t('payDirty'), 6000); return; }
+  if (RUNNING){ toast(t('busy')); return; }
+  RUNNING = true; toast(t('runningToast', t('payPreview')), 0);
+  try{
+    const r = await call('api_runAction', TOKEN, 'payroll', 'payrollPreview');
+    toast(st(r.status) + ' · ' + r.secs + ' ' + t('secs'));
+    openModal(t('payPreview'), `${pill(r.status)} ${esc(r.summary)}`, r.log);
+  }catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000); }
+  finally{ RUNNING = false; }
 }
 async function payNow(id){
   if (PAY_DIRTY){ toast(t('payDirty'), 6000); return; }

@@ -297,7 +297,7 @@ function runLogged_(jobId, source, action, fn) {
     const text = ((lg ? lg + '\n' : '') + buf.join('\n')).trim();
     const resText = resultText_(result);
     const status = error ? 'error'
-      : /"error"\s*:|FAILED|Failed |WARN: |"timedOut":true/.test(resText + '\n' + text) ? 'warn' : 'ok';
+      : /"error"\s*:|FAILED|Failed |WARN: |ERROR: |"timedOut":true/.test(resText + '\n' + text) ? 'warn' : 'ok';
     const lines = text.split('\n').filter(String)
       .map(function (l) { return l.replace(/^.*?\b(INFO|WARNING|SEVERE): /, ''); });   // من غير ختم الوقت بتاع Logger
     const summary = (error || resText || lines[lines.length - 1] || 'تم بدون مخرجات · Done, no output').substring(0, 300);
@@ -749,6 +749,10 @@ function api_healthCheck(t) {
     const dry = ['BOSTA_DRY_RUN', 'KASHIER_PAYOUT_DRY_RUN'].filter(function (k) { return String(all[k] || '').toLowerCase() !== 'false'; });
     const msg = 'GO_LIVE_DATE: ' + (all.GO_LIVE_DATE || '—') + ' · schedules: ' + trig + (dry.length ? ' · dry: ' + dry.join(', ') : '');
     if (!all.GO_LIVE_DATE) return { status: 'warn', msg: msg, fix: 'حدد GO_LIVE_DATE في الإعدادات المشتركة.', fix_en: 'Set GO_LIVE_DATE in the shared settings.' };
+    const payMissing = (typeof PAY_ACCOUNT_KEYS !== 'undefined' && JSON.parse(all.PAYROLL_ITEMS || '[]').length)
+      ? PAY_ACCOUNT_KEYS.filter(function (k) { return !all[k]; }) : [];
+    if (payMissing.length) return { status: 'warn', msg: msg + ' · payroll accounts missing: ' + payMissing.length,
+      fix: 'حط حسابات الرواتب والإيجارات في الإعدادات: ' + payMissing.join(', '), fix_en: 'Set the payroll & rent accounts in Settings: ' + payMissing.join(', ') };
     if (!trig) return { status: 'warn', msg: msg, fix: 'مفيش ولا موعد شغال: فعّل المواعيد من الرئيسية لما الاتصالات تبقى تمام.', fix_en: 'No schedules are on: turn them on from the overview once the connections are OK.' };
     return { msg: msg };
   }));
@@ -780,7 +784,7 @@ function api_testConnections(t) {
 // بيتمسح أي مفتاح مش في الإعدادات (المشتركة + إعدادات كل سكريبت) ومش من بيانات الحالة.
 // بيانات الحالة (اللي اترحّل قبل كده، الجلسات، السجل) عمرها ما بتتمسح عشان القيود ما تتكررش.
 const STATE_KEYS = ['PROCESSED', 'GADS_DAYS_PROCESSED', 'GADS_TX_PROCESSED', 'META_CHARGES_PROCESSED',
-  'META_INVOICES_PROCESSED', 'PAYROLL_ITEMS', 'PAYROLL_POSTED'];
+  'META_INVOICES_PROCESSED', 'PAYROLL_ITEMS', 'PAYROLL_POSTED', 'PAYROLL_REV'];
 
 function keepProp_(k) {
   if (/^APP_/.test(k)) return true;                                   // كلمة السر والجلسات والسجل والمواعيد
