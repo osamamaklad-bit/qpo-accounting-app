@@ -1,0 +1,73 @@
+name: Pull edits from Apps Script
+
+# لو عدّلت كود في محرر جوجل سكريبت، الـ workflow ده بيجيب التعديل لـ GitHub كـ commit واحد على main
+# (من غير Pull Requests). بيشتغل مرة في اليوم لوحده، أو يدوي من Actions ← Run workflow.
+# بيحدّث الملفات اللي موجودة في src/ بس: أي ملف جديد في المحرر (زي Temp فيه كلمة سر) مش بيترفع.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 1 * * *'   # 03:17 بتوقيت القاهرة
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apps-script
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    env:
+      CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+      SCRIPT_ID: ${{ secrets.SCRIPT_ID }}
+    steps:
+      - name: Check secrets
+        run: |
+          if [ -z "$CLASPRC_JSON" ] || [ -z "$SCRIPT_ID" ]; then
+            echo "::error::Add repository secrets CLASPRC_JSON and SCRIPT_ID."; exit 1
+          fi
+
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - name: Download the Apps Script project
+        run: |
+          npm install -g @google/clasp@2.4.2
+          printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
+          mkdir -p "$RUNNER_TEMP/remote"
+          printf '{"scriptId":"%s","rootDir":".","fileExtension":"gs"}' "$SCRIPT_ID" > "$RUNNER_TEMP/remote/.clasp.json"
+          (cd "$RUNNER_TEMP/remote" && clasp pull)
+
+      - name: Copy changed files into src/
+        id: copy
+        run: |
+          changed=""; skipped=""
+          for f in "$RUNNER_TEMP"/remote/*; do
+            name=$(basename "$f")
+            [ "$name" = ".clasp.json" ] && continue
+            if [ -f "src/$name" ]; then
+              if ! cmp -s "$f" "src/$name"; then cp "$f" "src/$name"; changed="$changed $name"; fi
+            else
+              skipped="$skipped $name"
+            fi
+          done
+          echo "Changed:${changed:- none}" | tee -a "$GITHUB_STEP_SUMMARY"
+          [ -n "$skipped" ] && echo "Not copied (new files in the editor, not in src/):$skipped" | tee -a "$GITHUB_STEP_SUMMARY"
+          for f in src/*; do
+            [ -f "$RUNNER_TEMP/remote/$(basename "$f")" ] || echo "In src/ but not in the editor (kept): $(basename "$f")" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+          echo "changed=${changed}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit to main
+        if: steps.copy.outputs.changed != ''
+        run: |
+          cp src/Index.html index.html
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src index.html
+          git commit -m "Sync from the Apps Script editor:${{ steps.copy.outputs.changed }}"
+          git push

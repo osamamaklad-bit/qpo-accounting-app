@@ -61,6 +61,13 @@
 
 ⚠️ `clasp push` بيخلي ملفات مشروع Apps Script مطابقة لـ `src/` بالظبط: أي ملف في المحرر مش موجود هنا هيتمسح.
 
+## تعديلات من محرر جوجل سكريبت ← GitHub
+
+`.github/workflows/pull.yml` بيجيب أي تعديل اتعمل في المحرر ويحطه على `main` كـ commit واحد (من غير Pull Requests):
+- بيشتغل لوحده مرة في اليوم (03:17 بتوقيت القاهرة)، أو فوراً من Actions ← **Pull edits from Apps Script** ← Run workflow.
+- بيحدّث الملفات اللي موجودة في `src/` بس. أي ملف جديد في المحرر (زي `Temp` فيه كلمة سر) مش بيترفع، لأن الريبو ممكن يكون عام.
+- النشر من GitHub بيقف لو لقى تعديل في المحرر لسه مجاش GitHub، عشان ما يمسحهوش. شغّل الـ Pull الأول. (التشغيل اليدوي لـ Deploy بيرفع إجباري.)
+
 ## الواجهة على GitHub Pages
 
 GitHub Pages بيتنشر من جذر `main`. `index.html` في الجذر نسخة من `src/Index.html` وبيتحدّث لوحده (`.github/workflows/pages.yml`)، فعدّل `src/Index.html` بس.

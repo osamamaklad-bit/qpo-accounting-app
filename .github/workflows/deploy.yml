@@ -4,7 +4,11 @@ on:
   push:
     branches: [main]
     paths: ['src/**']
-  workflow_dispatch:
+  workflow_dispatch:     # تشغيل يدوي = رفع إجباري (من غير فحص تعديلات المحرر)
+
+concurrency:
+  group: apps-script
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -33,11 +37,37 @@ jobs:
         with:
           node-version: 20
 
-      - name: Push code and update the web app deployment
+      - name: Install clasp
         if: steps.check.outputs.ok == 'true'
         run: |
           npm install -g @google/clasp@2.4.2
           printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
+
+      # clasp push -f بيمسح أي تعديل في المحرر مش موجود في GitHub. لو فيه تعديل كده، النشر بيقف
+      # ولازم تشغّل "Pull edits from Apps Script" الأول، وبعدين تعدّل فوقه.
+      - name: Stop if the editor has edits that GitHub doesn't
+        if: steps.check.outputs.ok == 'true' && github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          git fetch -q --depth=1 origin "$BEFORE"
+          mkdir -p "$RUNNER_TEMP/remote"
+          printf '{"scriptId":"%s","rootDir":".","fileExtension":"gs"}' "$SCRIPT_ID" > "$RUNNER_TEMP/remote/.clasp.json"
+          (cd "$RUNNER_TEMP/remote" && clasp pull)
+          drift=""
+          for f in "$RUNNER_TEMP"/remote/*; do
+            name=$(basename "$f"); [ "$name" = ".clasp.json" ] && continue
+            git cat-file -e "$BEFORE:src/$name" 2>/dev/null || continue          # ملف مش من المشروع (زي Temp)
+            if ! git show "$BEFORE:src/$name" | cmp -s - "$f" && ! cmp -s "$f" "src/$name"; then drift="$drift $name"; fi
+          done
+          if [ -n "$drift" ]; then
+            echo "::error::These files were edited in the Apps Script editor and aren't in GitHub:$drift. Run 'Pull edits from Apps Script' first, or run this workflow manually to overwrite them."
+            exit 1
+          fi
+
+      - name: Push code and update the web app deployment
+        if: steps.check.outputs.ok == 'true'
+        run: |
           printf '{"scriptId":"%s","rootDir":"src"}' "$SCRIPT_ID" > .clasp.json
           clasp push -f
           clasp deploy -i "$DEPLOYMENT_ID" -d "GitHub ${GITHUB_SHA::7}"
