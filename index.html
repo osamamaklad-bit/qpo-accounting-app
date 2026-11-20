@@ -87,6 +87,18 @@ main{max-width:1240px;margin:auto;padding:22px max(16px,env(safe-area-inset-righ
 .tile.bad .n{color:var(--red)}
 .tile.date .n{font-size:22px;padding-top:4px}
 
+/* health */
+.health{display:grid;gap:10px}
+.health-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.health-h h3{flex:1;font-size:17px;color:var(--navy)}
+.hrow{display:grid;grid-template-columns:auto minmax(110px,160px) minmax(0,1fr);gap:4px 12px;align-items:start;padding:10px 0;border-top:1px solid var(--line)}
+.hrow .nm{font-weight:600}
+.hrow .msg{color:var(--mute);font-size:12.5px;word-break:break-word}
+.hrow .fix{grid-column:2 / -1;font-size:12.5px;font-weight:600}
+.hrow .fix.error{color:var(--red)}
+.hrow .fix.warn{color:var(--warn)}
+@media(max-width:760px){.hrow{grid-template-columns:auto 1fr}.hrow .msg,.hrow .fix{grid-column:1 / -1}}
+
 /* alert */
 .alert{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);border-inline-start:6px solid var(--red);padding:14px 18px;display:grid;gap:6px}
 .alert h3{font-size:16px;color:var(--red)}
@@ -265,6 +277,8 @@ pre{background:var(--navy);color:#e9f0ff;padding:14px;border-radius:14px;overflo
 /* ---------- اللغة / Language ---------- */
 const I18N = {
   ar: {
+    healthTitle:'حالة الاتصالات', healthRun:'افحص الآن', healthNever:'لسه متعملش فحص. دوس "افحص الآن" (مش بيرحّل أي حاجة).',
+    healthChecking:'جاري الفحص... (حوالي 20 ثانية)', healthAt:x => `آخر فحص: ${x}`, hOk:'شغال', hWarn:'محتاج انتباه', hErr:'مش شغال',
     install:'ثبّت التطبيق', otherLang:'English', tagline:'لوحة إدارة القيود والمزامنة', pw:'كلمة السر', signIn:'دخول', signOut:'خروج',
     tabHome:'الرئيسية', tabLogs:'السجل', tabSettings:'الإعدادات', tabAccount:'الحساب',
     ok:'تم', warn:'تحذير', error:'خطأ', running:'شغال', stopped:'اتوقف', none:'لم يُشغّل بعد',
@@ -302,6 +316,8 @@ const I18N = {
     pwNote:'بعد التغيير هيتعمل خروج من كل الأجهزة.', pwMismatch:'التأكيد مش مطابق', pwDone:'تم تغيير كلمة السر، ادخل بالجديدة'
   },
   en: {
+    healthTitle:'Connection health', healthRun:'Check now', healthNever:'Not checked yet. Press “Check now” (it posts nothing).',
+    healthChecking:'Checking… (about 20 seconds)', healthAt:x => `Last checked: ${x}`, hOk:'Working', hWarn:'Needs attention', hErr:'Not working',
     install:'Install app', otherLang:'عربي', tagline:'Journals & sync control panel', pw:'Password', signIn:'Sign in', signOut:'Sign out',
     tabHome:'Overview', tabLogs:'Run log', tabSettings:'Settings', tabAccount:'Account',
     ok:'OK', warn:'Warning', error:'Failed', running:'Running', stopped:'Stopped', none:'Not run yet',
@@ -424,6 +440,8 @@ function renderHome(){
     <div class="tile date"><span class="n mono" style="font-family:var(--f-display)">${esc(STATE.goLive || t('notSet'))}</span><span class="l">${t('tGoLive')}</span></div>
   </div>`;
 
+  h += healthHtml();
+
   if (bad.length){
     h += `<div class="alert"><h3>${esc(t('alertTitle', bad.length))}</h3>`;
     bad.forEach(j => h += `<div class="item" tabindex="0" onclick="jobLogs('${j.id}')" onkeydown="if(event.key==='Enter')jobLogs('${j.id}')">${pill(j.last.status)} <b>${esc(pick(j,'name'))}</b><span class="badge">${esc(j.last.time)}</span><div class="s" dir="auto">${esc(j.last.summary)}</div></div>`);
@@ -470,6 +488,28 @@ function renderHome(){
     h += `</div>`;
   }
   $('tab-home').innerHTML = `<div style="display:grid;gap:22px">${h}</div>`;
+}
+
+let HEALTH_RUNNING = false;
+function healthHtml(){
+  const H = STATE.health;
+  let h = `<div class="card health"><div class="health-h"><h3>${t('healthTitle')}</h3>` +
+    `<span class="badge" id="healthAt">${H ? esc(t('healthAt', H.time)) : ''}</span>` +
+    `<button class="sm" id="healthBtn" ${HEALTH_RUNNING?'disabled':''} onclick="runHealth()">${HEALTH_RUNNING ? t('healthChecking') : t('healthRun')}</button></div>`;
+  if (!H){ return h + `<div class="badge">${t('healthNever')}</div></div>`; }
+  const lab = {ok:t('hOk'), warn:t('hWarn'), error:t('hErr')};
+  H.checks.forEach(c => {
+    h += `<div class="hrow"><span class="pill ${esc(c.status)}">${esc(lab[c.status]||c.status)}</span><span class="nm">${esc(pick(c,'name'))}</span>` +
+      `<span class="msg mono" dir="auto">${esc(c.msg)}</span>` + (pick(c,'fix') ? `<span class="fix ${esc(c.status)}">${esc(pick(c,'fix'))}</span>` : '') + `</div>`;
+  });
+  return h + `</div>`;
+}
+async function runHealth(){
+  if (HEALTH_RUNNING) return;
+  HEALTH_RUNNING = true; renderHome();
+  try{ STATE.health = await call('api_healthCheck', TOKEN); }
+  catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000); }
+  finally{ HEALTH_RUNNING = false; if (STATE) renderHome(); }
 }
 
 async function setTrig(ji, ti){

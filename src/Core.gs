@@ -202,7 +202,7 @@ function doPost(e) {
 // كل دالة هنا بتتحقق من التوكن بنفسها (auth_) ما عدا الدخول والخروج.
 const UI_API = ['api_login', 'api_logout', 'api_changePassword', 'api_state', 'api_runAction', 'api_setTrigger',
   'api_deleteTrigger', 'api_logs', 'api_logDetail', 'api_settings', 'api_saveSettings', 'api_qboAccounts',
-  'api_testConnections', 'api_importProps', 'api_cleanupProps'];
+  'api_testConnections', 'api_importProps', 'api_cleanupProps', 'api_healthCheck'];
 
 function uiApi_(e) {
   let out;
@@ -500,6 +500,7 @@ function api_state(t) {
 
   return {
     groups: GROUPS, jobs: jobs, others: others, goLive: all.GO_LIVE_DATE || '',
+    health: JSON.parse(all.APP_HEALTH || 'null'),
     logUrl: all.APP_LOG_SHEET_ID ? 'https://docs.google.com/spreadsheets/d/' + all.APP_LOG_SHEET_ID : ''
   };
 }
@@ -646,6 +647,99 @@ function api_qboAccounts(t) {
   return ((JSON.parse(r.getContentText()).QueryResponse || {}).Account || [])
     .map(function (a) { return { id: a.Id, name: a.FullyQualifiedName || a.Name, type: a.AccountType }; })
     .sort(function (a, b) { return a.name < b.name ? -1 : 1; });
+}
+
+/* ---------- فحص الاتصالات (قراية بس، مفيش أي ترحيل) ---------- */
+function hc_(id, name, nameEn, fn) {
+  const r = { id: id, name: name, name_en: nameEn, status: 'ok', msg: '', fix: '', fix_en: '' };
+  try {
+    const o = fn() || {};
+    r.status = o.status || 'ok'; r.msg = o.msg || ''; r.fix = o.fix || ''; r.fix_en = o.fix_en || '';
+  } catch (err) {
+    r.status = 'error';
+    r.msg = String((err && err.message) || err).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').substring(0, 220);
+  }
+  return r;
+}
+function hcGet_(url, headers) {
+  const res = UrlFetchApp.fetch(url, { headers: headers || {}, muteHttpExceptions: true });
+  return { code: res.getResponseCode(), text: res.getContentText().replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').substring(0, 200) };
+}
+function hcFix_(r, ar, en) { if (r.status !== 'ok') { r.fix = r.fix || ar; r.fix_en = r.fix_en || en; } return r; }
+
+function api_healthCheck(t) {
+  auth_(t);
+  const P = PropertiesService.getScriptProperties();
+  const all = P.getProperties();
+  const out = [];
+
+  out.push(hcFix_(hc_('qbo', 'كيو بي او', 'QuickBooks', function () {
+    const realm = req_('QBO_REALM_ID');
+    const res = UrlFetchApp.fetch('https://quickbooks.api.intuit.com/v3/company/' + realm + '/companyinfo/' + realm + '?minorversion=70',
+      { headers: { Authorization: 'Bearer ' + getQboToken_(), Accept: 'application/json' }, muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) return { status: 'error', msg: 'HTTP ' + res.getResponseCode() + ': ' + res.getContentText().substring(0, 200) };
+    return { msg: JSON.parse(res.getContentText()).CompanyInfo.CompanyName };
+  }), 'اربط كيو بي او من جديد، وحط QBO_REFRESH_TOKEN الجديد في الإعدادات.', 'Reconnect QuickBooks and paste the new QBO_REFRESH_TOKEN in Settings.'));
+
+  out.push(hcFix_(hc_('shopify', 'شوبيفاي', 'Shopify', function () {
+    return { msg: pqShopify_('{ shop { name } }').data.shop.name };
+  }), 'حط CLIENT_ID و CLIENT_SECRET الصح بتوع تطبيق شوبيفاي، وجرّب زرار "فحص اتصال شوبيفاي".', 'Set the Shopify app’s correct CLIENT_ID and CLIENT_SECRET, then use “Check Shopify connection”.'));
+
+  out.push(hcFix_(hc_('bosta', 'بوسطة', 'Bosta', function () {
+    const base = req_('BOSTA_FEES_URL').split('?')[0];
+    const r = hcGet_(base + '?page=1&pageSize=1', bostaHeaders_());
+    return r.code === 200 ? { msg: 'API OK' } : { status: 'error', msg: 'HTTP ' + r.code + ': ' + r.text };
+  }), 'حط مفتاح API جديد في BOSTA_API_KEY من لوحة بوسطة.', 'Paste a new API key from the Bosta dashboard into BOSTA_API_KEY.'));
+
+  out.push(hcFix_(hc_('kashier', 'كاشير', 'Kashier', function () {
+    const res = kashierGet_(req_('KASHIER_API_URL'));
+    const code = res.getResponseCode();
+    return code === 200 ? { msg: 'API OK' } : { status: 'error', msg: 'HTTP ' + code };
+  }), 'هات توكن جديد من لوحة كاشير وحطه في KASHIER_API_KEY.', 'Get a new token from the Kashier dashboard and paste it into KASHIER_API_KEY.'));
+
+  out.push(hc_('meta', 'ميتا', 'Meta', function () {
+    const acc = req_('META_AD_ACCOUNT_ID'), tok = req_('META_TOKEN');
+    const a = hcGet_('https://graph.facebook.com/v21.0/act_' + acc + '?fields=name&access_token=' + encodeURIComponent(tok));
+    if (a.code !== 200) return { status: 'error', msg: 'HTTP ' + a.code + ': ' + a.text.replace(tok, '***'),
+      fix: 'التوكن مرفوض: حط META_TOKEN جديد.', fix_en: 'The token was rejected: paste a new META_TOKEN.' };
+    const tx = hcGet_('https://graph.facebook.com/v21.0/act_' + acc + '/transactions?limit=1&access_token=' + encodeURIComponent(tok));
+    if (tx.code !== 200) return { status: 'warn', msg: 'Token OK · transactions: HTTP ' + tx.code,
+      fix: 'التوكن شغال، بس ترحيل الـ Charges محتاج يتعدل لأن فيسبوك قفل transactions.', fix_en: 'The token works, but posting charges needs an update: Facebook closed the transactions endpoint.' };
+    return { msg: 'Token OK' };
+  }));
+
+  out.push(hcFix_(hc_('sheets', 'شيتات جوجل', 'Google Sheets', function () {
+    const notes = [];
+    const po = SpreadsheetApp.openById(req_('SPREAD_SHEET_ID'));
+    if (!po.getSheetByName('PO')) return { status: 'error', msg: 'SPREAD_SHEET_ID: tab "PO" missing' };
+    const g = SpreadsheetApp.openById(req_('SPREAD_SHEET_ID2')).getSheetByName('GADS_TX');
+    if (!g) return { status: 'error', msg: 'SPREAD_SHEET_ID2: tab "GADS_TX" missing' };
+    const vals = g.getDataRange().getValues(), H = vals[0].map(function (h) { return String(h).trim().toLowerCase(); });
+    const di = H.indexOf('date');
+    let newest = '';
+    vals.slice(1).forEach(function (r) {
+      const d = r[di] instanceof Date ? Utilities.formatDate(r[di], APP.TZ, 'yyyy-MM-dd') : String(r[di]).substring(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d > newest) newest = d;
+    });
+    notes.push('PO ✓', 'GADS_TX ✓ (' + (newest || '?') + ')');
+    const stale = newest && newest < Utilities.formatDate(new Date(Date.now() - 3 * 864e5), APP.TZ, 'yyyy-MM-dd');
+    return stale ? { status: 'warn', msg: notes.join(' · '),
+      fix: 'تاب GADS_TX آخر بيانات فيه ' + newest + '. اتأكد إن اللي بيملاه لسه شغال.', fix_en: 'The newest row in GADS_TX is ' + newest + '. Check that whatever fills it is still running.' }
+      : { msg: notes.join(' · ') };
+  }), 'اتأكد من SPREAD_SHEET_ID و SPREAD_SHEET_ID2 وإن الحساب ليه صلاحية عليهم.', 'Check SPREAD_SHEET_ID and SPREAD_SHEET_ID2 and that this account can open them.'));
+
+  out.push(hc_('setup', 'الإعدادات العامة', 'General setup', function () {
+    const trig = ScriptApp.getProjectTriggers().length;
+    const dry = ['BOSTA_DRY_RUN', 'KASHIER_PAYOUT_DRY_RUN'].filter(function (k) { return String(all[k] || '').toLowerCase() !== 'false'; });
+    const msg = 'GO_LIVE_DATE: ' + (all.GO_LIVE_DATE || '—') + ' · schedules: ' + trig + (dry.length ? ' · dry: ' + dry.join(', ') : '');
+    if (!all.GO_LIVE_DATE) return { status: 'warn', msg: msg, fix: 'حدد GO_LIVE_DATE في الإعدادات المشتركة.', fix_en: 'Set GO_LIVE_DATE in the shared settings.' };
+    if (!trig) return { status: 'warn', msg: msg, fix: 'مفيش ولا موعد شغال: فعّل المواعيد من الرئيسية لما الاتصالات تبقى تمام.', fix_en: 'No schedules are on: turn them on from the overview once the connections are OK.' };
+    return { msg: msg };
+  }));
+
+  const res = { time: nowStr_(), checks: out };
+  P.setProperty('APP_HEALTH', JSON.stringify(res));
+  return res;
 }
 
 function api_testConnections(t) {
