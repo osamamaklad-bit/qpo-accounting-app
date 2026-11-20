@@ -21,6 +21,8 @@
   --peach:#ffeee6; --peach-2:#ffe2d6; --red:#e3041c; --red-dark:#b80316; --red-soft:#fde3e4;
   --navy:#1b294d; --navy-2:#2c3d6b; --ink:#1b294d; --mute:#6b6f86; --line:rgba(27,41,77,.10);
   --cyan:#8ef5fc; --cyan-soft:#e3fcfe; --cyan-ink:#06717a;
+  /* QuickBooks green: everything that writes to QuickBooks Online uses it, PetFriend red stays the brand */
+  --qb:#2ca01c; --qb-dark:#108000; --qb-soft:#e8f6e6;
   --ok:#17803d; --ok-soft:#e5f6ea; --warn:#a85d00; --warn-soft:#fff2db;
   --surface:#ffffff; --radius:18px;
   --shadow:0 1px 2px rgba(27,41,77,.06),0 10px 28px rgba(27,41,77,.07);
@@ -58,13 +60,25 @@ textarea{min-height:110px;direction:ltr;text-align:left}
 .login{background:var(--surface);border-radius:28px;box-shadow:var(--shadow);padding:34px 30px 28px;width:min(400px,100%);display:grid;gap:14px;text-align:center}
 .login img{width:96px;height:96px;object-fit:contain;margin:0 auto}
 .wordmark{font-family:var(--f-display);font-weight:800;color:var(--red);font-size:30px;letter-spacing:.02em;line-height:1}
-.wordmark small{display:inline-block;font-size:13px;font-weight:700;color:#fff;background:var(--navy);border-radius:8px;padding:2px 8px;margin-inline-start:8px;vertical-align:middle;letter-spacing:.06em}
+.wordmark small{display:inline-block;font-size:13px;font-weight:700;color:#fff;background:var(--qb);border-radius:8px;padding:2px 8px;margin-inline-start:8px;vertical-align:middle;letter-spacing:.04em;font-family:var(--f-body)}
+.cobrand{display:inline-flex;align-items:center;gap:8px;justify-self:center;font-size:12.5px;font-weight:600;color:var(--qb-dark);background:var(--qb-soft);border-radius:999px;padding:4px 12px}
+.cobrand::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--qb)}
+.duo{height:4px;border-radius:999px;background:linear-gradient(90deg,var(--red) 0 50%,var(--qb) 50% 100%)}
+[dir=rtl] .duo{background:linear-gradient(270deg,var(--red) 0 50%,var(--qb) 50% 100%)}
+button.qbpost{border-color:rgba(44,160,28,.45);color:var(--qb-dark)}
+button.qbpost:hover{background:var(--qb-soft);border-color:var(--qb)}
+button.pri.qbpost{background:var(--qb);border-color:var(--qb);color:#fff;box-shadow:0 6px 16px rgba(44,160,28,.25)}
+button.pri.qbpost:hover{background:var(--qb-dark);border-color:var(--qb-dark)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--mute)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+footer{max-width:1240px;margin:auto;padding:0 max(16px,env(safe-area-inset-right,0px)) 28px max(16px,env(safe-area-inset-left,0px));color:var(--mute);font-size:11.5px}
 .tag{color:var(--mute);font-size:13px}
 .err{color:var(--red);font-size:13px;font-weight:600;word-break:break-word}
 .login .lang{justify-self:center}
 
 /* top bar */
-header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:rgba(255,255,255,.92);backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:rgba(255,255,255,.92);backdrop-filter:saturate(1.4) blur(10px);}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:#fff}
 .bar{max-width:1240px;margin:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
 .brand{display:flex;align-items:center;gap:10px}
@@ -147,7 +161,7 @@ a.badge{color:var(--navy);font-weight:600}
 /* tables */
 .tablewrap{overflow-x:auto;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow)}
 table{width:100%;border-collapse:collapse;min-width:760px}
-th,td{padding:10px 14px;text-align:start;font-size:13px;vertical-align:top;border-bottom:1px solid var(--line)}
+th,td{padding:10px 14px;text-align:start;font-size:13px;vertical-align:top;}
 th{font-weight:600;color:var(--mute);font-size:12px;text-transform:uppercase;letter-spacing:.05em;background:#fbf8f6}
 tr.click{cursor:pointer}
 tr.click:hover td{background:var(--peach)}
@@ -157,7 +171,7 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .toolbar select{width:auto;min-width:220px}
 
 /* settings */
-.prop{display:grid;grid-template-columns:270px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.prop{display:grid;grid-template-columns:270px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0;}
 .prop:last-child{border-bottom:none}
 .prop .key{font-family:var(--f-mono);font-size:12.5px;direction:ltr;text-align:left;color:var(--navy-2);word-break:break-all}
 .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -184,8 +198,10 @@ pre{background:var(--navy);color:#e9f0ff;padding:14px;border-radius:14px;overflo
 <div id="login" class="center hidden">
   <div class="login">
     <img src="https://osamamaklad-bit.github.io/qpo-accounting-app/icons/logo-512.png" alt="PetFriend" onerror="this.remove()">
-    <div class="wordmark">PET FRIEND<small>QBO</small></div>
+    <div class="wordmark">PET FRIEND<small>QuickBooks</small></div>
     <div class="tag" data-i="tagline"></div>
+    <div class="cobrand" data-i="cobrand"></div>
+    <div class="duo"></div>
     <input id="pw" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     <button id="loginBtn" class="pri" onclick="doLogin()" data-i="signIn"></button>
     <div id="loginErr" class="err" role="alert"></div>
@@ -198,7 +214,7 @@ pre{background:var(--navy);color:#e9f0ff;padding:14px;border-radius:14px;overflo
     <div class="bar">
       <div class="brand">
         <img src="https://osamamaklad-bit.github.io/qpo-accounting-app/icons/logo-512.png" alt="" onerror="this.remove()">
-        <div class="wordmark">PET FRIEND<small>QBO</small></div>
+        <div class="wordmark">PET FRIEND<small>QuickBooks</small></div>
       </div>
       <nav>
         <button data-tab="home" onclick="showTab('home')" data-i="tabHome"></button>
@@ -211,6 +227,7 @@ pre{background:var(--navy);color:#e9f0ff;padding:14px;border-radius:14px;overflo
       <button class="ghost sm" onclick="toggleLang()" data-i="otherLang"></button>
       <button class="sm" onclick="logout()" data-i="signOut"></button>
     </div>
+    <div class="duo" style="height:3px;border-radius:0"></div>
   </header>
 
   <main>
@@ -262,6 +279,7 @@ pre{background:var(--navy);color:#e9f0ff;padding:14px;border-radius:14px;overflo
       </div>
     </section>
   </main>
+  <footer data-i="tm"></footer>
 </div>
 
 <div id="modal" class="modal hidden" onclick="if(event.target===this)closeModal()">
@@ -279,7 +297,9 @@ const I18N = {
   ar: {
     healthTitle:'حالة الاتصالات', healthRun:'افحص الآن', healthNever:'لسه متعملش فحص. دوس "افحص الآن" (مش بيرحّل أي حاجة).',
     healthChecking:'جاري الفحص... (حوالي 20 ثانية)', healthAt:x => `آخر فحص: ${x}`, hOk:'شغال', hWarn:'محتاج انتباه', hErr:'مش شغال',
-    install:'ثبّت التطبيق', otherLang:'English', tagline:'لوحة إدارة القيود والمزامنة', pw:'كلمة السر', signIn:'دخول', signOut:'خروج',
+    install:'ثبّت التطبيق', otherLang:'English', tagline:'لوحة إدارة القيود والمزامنة', cobrand:'لوحة PetFriend لـ QuickBooks Online',
+    writesQb:'الزرار ده بيكتب في QuickBooks', legendPet:'PetFriend', legendQb:'بيكتب في QuickBooks',
+    tm:'QuickBooks علامة تجارية مملوكة لـ Intuit Inc. التطبيق ده أداة داخلية لـ PetFriend ومش تابع لـ Intuit.', pw:'كلمة السر', signIn:'دخول', signOut:'خروج',
     tabHome:'الرئيسية', tabLogs:'السجل', tabSettings:'الإعدادات', tabAccount:'الحساب',
     ok:'تم', warn:'تحذير', error:'خطأ', running:'شغال', stopped:'اتوقف', none:'لم يُشغّل بعد',
     manual:'يدوي', schedule:'مجدول', webhook:'ويب هوك',
@@ -318,7 +338,9 @@ const I18N = {
   en: {
     healthTitle:'Connection health', healthRun:'Check now', healthNever:'Not checked yet. Press “Check now” (it posts nothing).',
     healthChecking:'Checking… (about 20 seconds)', healthAt:x => `Last checked: ${x}`, hOk:'Working', hWarn:'Needs attention', hErr:'Not working',
-    install:'Install app', otherLang:'عربي', tagline:'Journals & sync control panel', pw:'Password', signIn:'Sign in', signOut:'Sign out',
+    install:'Install app', otherLang:'عربي', tagline:'Journals & sync control panel', cobrand:'PetFriend for QuickBooks Online',
+    writesQb:'This button writes to QuickBooks', legendPet:'PetFriend', legendQb:'Writes to QuickBooks',
+    tm:'QuickBooks is a trademark of Intuit Inc. This is an internal PetFriend tool and is not affiliated with Intuit.', pw:'Password', signIn:'Sign in', signOut:'Sign out',
     tabHome:'Overview', tabLogs:'Run log', tabSettings:'Settings', tabAccount:'Account',
     ok:'OK', warn:'Warning', error:'Failed', running:'Running', stopped:'Stopped', none:'Not run yet',
     manual:'Manual', schedule:'Scheduled', webhook:'Webhook',
@@ -448,6 +470,7 @@ function renderHome(){
     h += `<div class="badge">${t('alertHint')}</div></div>`;
   }
 
+  h += `<div class="legend"><span><i style="background:var(--red)"></i>${t('legendPet')}</span><span><i style="background:var(--qb)"></i>${t('legendQb')}</span></div>`;
   STATE.groups.forEach(g => {
     h += `<h2 class="section-h">${esc(pick(g,'name'))}</h2><div class="grid">`;
     jobs.forEach((j, ji) => {
@@ -469,7 +492,7 @@ function renderHome(){
       }
       if (j.queue) h += `<div class="badge">${t('oldQueue', j.queue)}</div>`;
       h += `<div class="acts">`;
-      j.actions.forEach((a, ai) => h += `<button class="sm ${ai===0?'pri':''}" ${RUNNING?'disabled':''} onclick="runAct(${ji},${ai})">${esc(pick(a,'label'))}</button>`);
+      j.actions.forEach((a, ai) => h += `<button class="sm ${ai===0?'pri':''} ${a.post && !j.dry?'qbpost':''}" title="${a.post && !j.dry ? esc(t('writesQb')) : ''}" ${RUNNING?'disabled':''} onclick="runAct(${ji},${ai})">${esc(pick(a,'label'))}</button>`);
       if (j.dryKey) h += `<button class="sm" onclick="toggleDry(${ji})">${j.dry?t('dryOff'):t('dryOn')}</button>`;
       h += `<button class="sm ghost" onclick="jobLogs('${j.id}')">${t('log')}</button></div>`;
       if (j.webhook !== null){
