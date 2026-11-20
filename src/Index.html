@@ -174,6 +174,13 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .prop{display:grid;grid-template-columns:270px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0;}
 .prop:last-child{border-bottom:none}
 .prop .key{font-family:var(--f-mono);font-size:12.5px;direction:ltr;text-align:left;color:var(--navy-2);word-break:break-all}
+.prop .kcell{display:grid;gap:2px;min-width:0}
+[dir=rtl] .prop .key{text-align:right}
+.prop .hint{font-size:11.5px;color:var(--mute);line-height:1.45}
+.prop.changed{box-shadow:inset 4px 0 0 var(--cyan);padding-inline-start:10px}
+[dir=rtl] .prop.changed{box-shadow:inset -4px 0 0 var(--cyan)}
+.toolbar input[type=search]{width:auto;min-width:200px;flex:1;max-width:340px}
+.count{display:inline-block;min-width:20px;border-radius:999px;background:#fff;color:var(--red);font-size:12px;padding:0 6px;margin-inline-start:6px}
 .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .row label{display:flex;align-items:center;gap:8px}
 .row input[type=checkbox]{width:auto;accent-color:var(--red)}
@@ -236,6 +243,8 @@ pre{background:var(--navy);color:#e9f0ff;padding:14px;border-radius:14px;overflo
     <section id="tab-logs" class="hidden" style="display:grid;gap:16px">
       <div class="toolbar">
         <select id="logJob" onchange="loadLogs()"></select>
+        <select id="logStatus" onchange="renderLogRows()" aria-label="status"></select>
+        <input id="logSearch" type="search" oninput="renderLogRows()">
         <button class="sm" onclick="loadLogs()" data-i="refresh"></button>
         <a id="logSheet" target="_blank" rel="noopener" class="badge"></a>
       </div>
@@ -244,7 +253,7 @@ pre{background:var(--navy);color:#e9f0ff;padding:14px;border-radius:14px;overflo
 
     <section id="tab-settings" class="hidden" style="display:grid;gap:18px">
       <div class="toolbar">
-        <button class="pri" onclick="saveSettings()" data-i="saveChanges"></button>
+        <button class="pri" id="saveBtn" onclick="saveSettings()"></button>
         <button onclick="loadAccounts()" data-i="loadAccounts"></button>
         <button onclick="testConn()" data-i="testConn"></button>
         <span id="connRes" class="badge"></span>
@@ -320,7 +329,8 @@ const I18N = {
     allScripts:'كل السكريبتات', refresh:'تحديث', openSheet:'فتح شيت السجل', loading:'جاري التحميل...', noRuns:'لا يوجد سجل بعد.',
     hTime:'الوقت', hScript:'السكريبت', hSource:'المصدر', hAction:'الإجراء', hStatus:'الحالة', hSecs:'ث', hSummary:'الملخص',
     close:'إغلاق', noLog:'(لا يوجد لوج)',
-    saveChanges:'حفظ التغييرات', loadAccounts:'تحميل حسابات QBO', testConn:'اختبار الاتصال', testing:'جاري الاختبار...',
+    saveChanges:'حفظ التغييرات', unsavedLeave:n => `عندك ${n} تغيير مش محفوظ في الإعدادات. تسيبهم؟`,
+    anyStatus:'كل الحالات', search:'دوّر في السجل...', noMatch:'مفيش نتايج مطابقة.', shownOf:(a,b) => `${a} من ${b}`, loadAccounts:'تحميل حسابات QBO', testConn:'اختبار الاتصال', testing:'جاري الاختبار...',
     secretSet:'•••••• محفوظ — اكتب لتغييره', secretUnset:'غير مضبوط', boolEmpty:'— (تجربة)', boolTrue:'true (تجربة، بدون ترحيل)', boolFalse:'false (ترحيل فعلي)',
     notInQbo:'غير موجود في QBO: ', empty:'فارغ', othersProps:'خصائص أخرى', noneItems:'لا يوجد', value:'القيمة', add:'إضافة',
     stateNote:n => `بيانات الحالة الداخلية (اللي اترحّل قبل كده): ${n} مفتاح. مش بتظهر هنا عشان ما تتعدلش بالغلط.`,
@@ -361,7 +371,8 @@ const I18N = {
     allScripts:'All scripts', refresh:'Refresh', openSheet:'Open log sheet', loading:'Loading…', noRuns:'No runs yet.',
     hTime:'Time', hScript:'Script', hSource:'Source', hAction:'Action', hStatus:'Status', hSecs:'Sec', hSummary:'Summary',
     close:'Close', noLog:'(no log)',
-    saveChanges:'Save changes', loadAccounts:'Load QBO accounts', testConn:'Test connections', testing:'Testing…',
+    saveChanges:'Save changes', unsavedLeave:n => `You have ${n} unsaved change${n===1?'':'s'} in Settings. Leave anyway?`,
+    anyStatus:'Any status', search:'Search the log…', noMatch:'No matching runs.', shownOf:(a,b) => `${a} of ${b}`, loadAccounts:'Load QBO accounts', testConn:'Test connections', testing:'Testing…',
     secretSet:'•••••• saved — type to replace', secretUnset:'Not set', boolEmpty:'— (dry run)', boolTrue:'true (dry run, no posting)', boolFalse:'false (post for real)',
     notInQbo:'Not in QBO: ', empty:'Empty', othersProps:'Other properties', noneItems:'None', value:'Value', add:'Add',
     stateNote:n => `Internal state (already-posted markers): ${n} keys, hidden so they can’t be edited by mistake.`,
@@ -387,6 +398,11 @@ function applyLang(){
   document.documentElement.lang = LANG;
   document.documentElement.dir = LANG === 'ar' ? 'rtl' : 'ltr';
   document.querySelectorAll('[data-i]').forEach(el => el.textContent = t(el.dataset.i));
+  $('logSearch').placeholder = t('search');
+  const ls = $('logStatus'), cur = ls.value;
+  ls.innerHTML = `<option value="">${t('anyStatus')}</option>` + ['error','warn','stopped','running','ok'].map(s => `<option value="${s}">${t(s)}</option>`).join('');
+  ls.value = cur;
+  if ($('saveBtn')) $('saveBtn').textContent = t('saveChanges');
   $('pw').placeholder = t('pw'); $('oldPw').placeholder = t('pwOld'); $('newPw').placeholder = t('pwNew'); $('newPw2').placeholder = t('pwNew2');
 }
 function toggleLang(){
@@ -437,6 +453,8 @@ async function logout(){ try{ await call('api_logout', TOKEN);}catch(e){} showLo
 function start(){ $('login').classList.add('hidden'); $('app').classList.remove('hidden'); showTab('home'); }
 
 function showTab(name){
+  const leaving = !$('tab-settings').classList.contains('hidden') && name !== 'settings';
+  if (leaving && SETTINGS){ const n = Object.keys(pendingChanges()).length; if (n && !confirm(t('unsavedLeave', n))) return; }
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab===name));
   ['home','logs','settings','account'].forEach(n => $('tab-'+n).classList.toggle('hidden', n!==name));
   if(name==='home') loadHome();
@@ -597,11 +615,19 @@ async function loadLogs(){
   try{
     const rows = await call('api_logs', TOKEN, sel.value, 200);
     if (seq !== LOG_SEQ) return;
-    const names = {}; STATE.jobs.forEach(j => names[j.id] = pick(j,'name'));
-    if (!rows.length){ $('logsBody').innerHTML = `<div class="card">${t('noRuns')}</div>`; return; }
-    $('logsBody').innerHTML = `<div class="tablewrap"><table><thead><tr><th>${t('hTime')}</th><th>${t('hScript')}</th><th>${t('hSource')}</th><th>${t('hAction')}</th><th>${t('hStatus')}</th><th>${t('hSecs')}</th><th>${t('hSummary')}</th></tr></thead><tbody>` +
-      rows.map(r => `<tr class="click" tabindex="0" onclick="showLog('${esc(r.id)}')" onkeydown="if(event.key==='Enter')showLog('${esc(r.id)}')"><td class="num">${esc(r.time)}</td><td>${esc(names[r.job]||r.job)}</td><td>${esc(src(r.source))}</td><td class="mono">${esc(r.action)}</td><td>${pill(r.status)}</td><td class="num">${esc(r.secs)}</td><td style="word-break:break-word" dir="auto">${esc(r.summary)}</td></tr>`).join('') + `</tbody></table></div>`;
+    LOG_ROWS = rows; renderLogRows();
   }catch(e){ if (seq === LOG_SEQ) $('logsBody').innerHTML = `<div class="err">${esc(errMsg(e))}</div>`; }
+}
+let LOG_ROWS = [];
+function renderLogRows(){
+  const rowsAll = LOG_ROWS, st = $('logStatus').value, q = $('logSearch').value.trim().toLowerCase();
+  const names = {}; (STATE ? STATE.jobs : []).forEach(j => names[j.id] = pick(j,'name'));
+  if (!rowsAll.length){ $('logsBody').innerHTML = `<div class="card">${t('noRuns')}</div>`; return; }
+  const rows = rowsAll.filter(r => (!st || r.status === st) &&
+    (!q || [r.time, names[r.job]||r.job, r.action, r.summary].join(' ').toLowerCase().includes(q)));
+  if (!rows.length){ $('logsBody').innerHTML = `<div class="card">${t('noMatch')}</div>`; return; }
+  $('logsBody').innerHTML = `<div class="badge" style="margin-bottom:8px">${t('shownOf', rows.length, rowsAll.length)}</div><div class="tablewrap"><table><thead><tr><th>${t('hTime')}</th><th>${t('hScript')}</th><th>${t('hSource')}</th><th>${t('hAction')}</th><th>${t('hStatus')}</th><th>${t('hSecs')}</th><th>${t('hSummary')}</th></tr></thead><tbody>` +
+      rows.map(r => `<tr class="click" tabindex="0" onclick="showLog('${esc(r.id)}')" onkeydown="if(event.key==='Enter')showLog('${esc(r.id)}')"><td class="num">${esc(r.time)}</td><td>${esc(names[r.job]||r.job)}</td><td>${esc(src(r.source))}</td><td class="mono">${esc(r.action)}</td><td>${pill(r.status)}</td><td class="num">${esc(r.secs)}</td><td style="word-break:break-word" dir="auto">${esc(r.summary)}</td></tr>`).join('') + `</tbody></table></div>`;
 }
 async function showLog(id){
   try{
@@ -630,8 +656,80 @@ function propInput(p){
   }
   return `<input id="${id}" ${o} value="${esc(p.value)}" ${p.type==='date'?'placeholder="YYYY-MM-DD"':''} class="${/URL|SHOP|ID$|BODY|FIELD|DATE/.test(p.key)?'mono':''}">`;
 }
+// شرح كل إعداد: بيعمل إيه وتجيبه منين
+const HELP = {
+  GO_LIVE_DATE:['أي حركة قبل التاريخ ده مش بتترحّل في أي سكريبت (yyyy-MM-dd).','Nothing dated before this is posted by any script (yyyy-MM-dd).'],
+  QBO_CLIENT_ID:['من تطبيقك في developer.intuit.com ← Keys & credentials (Production).','From your app at developer.intuit.com → Keys & credentials (Production).'],
+  QBO_CLIENT_SECRET:['من نفس المكان. لو غيّرته، لازم refresh token جديد كمان.','Same place. If you change it, you need a new refresh token too.'],
+  QBO_REFRESH_TOKEN:['من Intuit OAuth Playground بعد ما تربط الشركة. بيتجدد لوحده بعد كده.','From the Intuit OAuth Playground after connecting the company. It renews itself afterwards.'],
+  QBO_REALM_ID:['رقم الشركة في QuickBooks (Company ID).','The QuickBooks company ID (realm).'],
+  QBO_UNDEPOSITED_FUNDS_ACCOUNT_ID:['حساب الأموال غير المودعة: تحصيلات بوسطة وكاشير بتتقفل منه.','Undeposited Funds account: Bosta and Kashier collections clear from it.'],
+  SHOP:['دومين المتجر، مثلاً petsfriend-5972.myshopify.com.','Store domain, e.g. petsfriend-5972.myshopify.com.'],
+  CLIENT_ID:['Client ID بتاع تطبيق شوبيفاي (Dev Dashboard ← Settings).','The Shopify app’s Client ID (Dev Dashboard → Settings).'],
+  CLIENT_SECRET:['Secret بتاع تطبيق شوبيفاي من نفس المكان.','The Shopify app’s secret, same place.'],
+  WEBAPP_URL:['سيبه فاضي: التطبيق بيستخدم الرابط الحالي لوحده.','Leave empty: the app uses its current URL automatically.'],
+  SPREAD_SHEET_ID:['شيت أوامر الشراء (فيه تاب PO). الـ ID من رابط الشيت.','Purchase-order sheet (has a PO tab). The ID is in the sheet URL.'],
+  QBO_INVENTORY_ASSET_ACCOUNT_ID:['حساب أصل المخزون لقيد إعادة التصنيف (فاضي = 121).','Inventory asset account for the reclass journal (empty = 121).'],
+  QBO_INVENTORY_OFFSET_ACCOUNT_ID:['حساب Inventory Offset لقيد إعادة التصنيف (فاضي = 315).','Inventory offset account for the reclass journal (empty = 315).'],
+  SPREAD_SHEET_ID2:['شيت جوجل أدز (فيه تاب GADS_TX).','Google Ads sheet (has a GADS_TX tab).'],
+  QBO_GADS_EXPENSE_ACCOUNT_ID:['حساب مصروف إعلانات جوجل.','Google Ads expense account.'],
+  QBO_GADS_CLEARING_ACCOUNT_ID:['حساب وسيط جوجل أدز (المصروف ضده والسداد بيقفله).','Google Ads clearing account (spend against it, payments clear it).'],
+  QBO_META_PAYMENT_ACCOUNT_ID:['الحساب اللي بيندفع منه (البنك أو الكارت).','The account payments come from (bank or card).'],
+  META_AD_ACCOUNT_ID:['رقم الحساب الإعلاني من غير act_.','Ad account number without act_.'],
+  META_BUSINESS_ID:['رقم الـ Business (زرار "معرفة Business ID" بيجيبه).','Business ID (the “Find Business ID” button finds it).'],
+  META_TOKEN:['توكن System User من Business Settings بصلاحية ads_read.','A System User token from Business Settings with ads_read.'],
+  QBO_META_CLEARING_ACCOUNT_ID:['حساب وسيط ميتا.','Meta clearing account.'],
+  BOSTA_API_KEY:['مفتاح API من لوحة بوسطة ← Settings ← API.','API key from the Bosta dashboard → Settings → API.'],
+  BOSTA_AUTH_HEADER_NAME:['اسم الهيدر اللي بيتبعت فيه المفتاح (عادة authorization).','Header that carries the key (usually authorization).'],
+  BOSTA_WEBHOOK_TOKEN:['كلمة سر بتختارها إنت وبتتحط في رابط الويب هوك.','A secret you choose; it goes in the webhook URL.'],
+  BOSTA_FEES_URL:['رابط حركات المحفظة في بوسطة.','Bosta wallet transactions URL.'],
+  BOSTA_PAYOUT_ORDERS_URL:['رابط أوردرات التحويل، و{id} مكان رقم التحويل.','Payout orders URL, with {id} for the payout number.'],
+  BOSTA_PAYOUT_START_DATE:['أول تاريخ تحويل يترحّل (مش قبل GO_LIVE_DATE).','First payout date to post (never before GO_LIVE_DATE).'],
+  BOSTA_DRY_RUN:['true = تجربة من غير ترحيل. false بس = ترحيل فعلي.','true = dry run. Only false posts for real.'],
+  QBO_BOSTA_CLEARING_ACCOUNT_ID:['حساب بوسطة الوسيط (صافي التحويل مدين فيه).','Bosta clearing account (net payout is debited here).'],
+  QBO_BOSTA_FEES_ACCOUNT_ID:['حساب مصروف رسوم بوسطة.','Bosta fees expense account.'],
+  QBO_BOSTA_CREDITS_ACCOUNT_ID:['حساب الكريدت (فاضي = نفس حساب الرسوم).','Credits account (empty = the fees account).'],
+  KASHIER_API_KEY:['توكن لوحة كاشير.','Kashier dashboard token.'],
+  KASHIER_AUTH_HEADER:['اسم الهيدر (فاضي = Authorization).','Header name (empty = Authorization).'],
+  KASHIER_API_URL:['رابط سجل الرصيد (التحويلات).','Balance records URL (payouts).'],
+  KASHIER_SETTLEMENTS_URL:['رابط الـ settlements.','Settlements URL.'],
+  KASHIER_PAYMENTS_URL:['رابط المدفوعات (التواريخ اللي فيه بتتغير لوحدها).','Payments URL (its dates are replaced automatically).'],
+  KASHIER_PAYOUT_START_DATE:['أول تاريخ تحويل يترحّل (مش قبل GO_LIVE_DATE).','First payout date to post (never before GO_LIVE_DATE).'],
+  KASHIER_PAYOUT_DRY_RUN:['true = تجربة من غير ترحيل. false بس = ترحيل فعلي.','true = dry run. Only false posts for real.'],
+  KASHIER_QBO_CLEARING_ACC_ID:['حساب كاشير الوسيط.','Kashier clearing account.'],
+  KASHIER_FEES_ACC_ID:['حساب مصروف رسوم كاشير + الضريبة.','Kashier fees + VAT expense account.'],
+  KASHIER_LOGIN_URL:['اختياري: رابط الدخول عشان التوكن يتجدد لوحده.','Optional: login URL so the token renews itself.'],
+  KASHIER_LOGIN_BODY:['اختياري: بيانات الدخول (JSON).','Optional: login body (JSON).'],
+  KASHIER_TOKEN_FIELD:['اختياري: مكان التوكن في الرد، مثلاً data.token.','Optional: where the token is in the reply, e.g. data.token.'],
+  QBO_INCOME_ACCOUNT_ID:['حساب إيراد المنتجات الجديدة.','Income account for new products.'],
+  QBO_EXPENSE_ACCOUNT_ID:['حساب تكلفة المبيعات للمنتجات الجديدة.','Cost of goods sold account for new products.'],
+  QBO_ASSET_ACCOUNT_ID:['حساب المخزون للمنتجات الجديدة.','Inventory asset account for new products.'],
+  QBO_INV_START_DATE:['تاريخ بداية المخزون للمنتجات الجديدة (فاضي = 2026-10-01).','Inventory start date for new products (empty = 2026-10-01).'],
+  SHEET_ID:['شيت مشاكل المزامنة (فاضي = شيت أوامر الشراء).','Sheet for sync issues (empty = the purchase-order sheet).']
+};
+function helpFor(k){ const h = HELP[k]; return h ? h[LANG === 'en' ? 1 : 0] : ''; }
+
+function pendingChanges(){
+  const ch = {};
+  document.querySelectorAll('#settingsBody [data-k]').forEach(el => {
+    const v = el.value.trim();
+    if (el.dataset.t==='secret'){ if(v) ch[el.dataset.k]=v; }
+    else if (v !== el.dataset.o) ch[el.dataset.k] = v;
+  });
+  return ch;
+}
+function updatePending(){
+  const ch = pendingChanges(), n = Object.keys(ch).length;
+  $('saveBtn').innerHTML = esc(t('saveChanges')) + (n ? `<span class="count">${n}</span>` : '');
+  document.querySelectorAll('#settingsBody .prop').forEach(row => {
+    const el = row.querySelector('[data-k]'); row.classList.toggle('changed', !!(el && el.dataset.k in ch));
+  });
+  return n;
+}
+
 function propRow(p, canDelete){
-  return `<div class="prop"><div class="key">${esc(p.key)}</div>${propInput(p)}<div>${canDelete?`<button class="sm danger" onclick="delProp('${esc(p.key)}')">${t('del')}</button>`:(p.set?'':`<span class="badge">${t('empty')}</span>`)}</div></div>`;
+  const hint = helpFor(p.key);
+  return `<div class="prop"><div class="kcell"><div class="key">${esc(p.key)}</div>${hint?`<div class="hint">${esc(hint)}</div>`:''}</div>${propInput(p)}<div>${canDelete?`<button class="sm danger" onclick="delProp('${esc(p.key)}')">${t('del')}</button>`:(p.set?'':`<span class="badge">${t('empty')}</span>`)}</div></div>`;
 }
 function renderSettings(){
   let h = '';
@@ -640,14 +738,10 @@ function renderSettings(){
   h += `<div class="prop"><input id="newKey" class="mono" placeholder="NEW_KEY"><input id="newVal" placeholder="${t('value')}"><button class="sm" onclick="addProp()">${t('add')}</button></div></div>`;
   h += `<div class="badge">${t('stateNote', SETTINGS.stateCount)}</div>`;
   $('settingsBody').innerHTML = h;
+  updatePending();
 }
 async function saveSettings(){
-  const ch = {};
-  document.querySelectorAll('#settingsBody [data-k]').forEach(el => {
-    const v = el.value.trim();
-    if (el.dataset.t==='secret'){ if(v) ch[el.dataset.k]=v; }
-    else if (v !== el.dataset.o) ch[el.dataset.k] = v;
-  });
+  const ch = pendingChanges();
   const keys = Object.keys(ch);
   if (!keys.length){ toast(t('noChanges')); return; }
   if (!confirm(t('saveConfirm', keys.length, keys.join('\n')))) return;
@@ -707,6 +801,11 @@ async function changePw(){
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+$('settingsBody').addEventListener('input', updatePending);
+$('settingsBody').addEventListener('change', updatePending);
+window.addEventListener('beforeunload', e => {
+  if (SETTINGS && !$('tab-settings').classList.contains('hidden') && Object.keys(pendingChanges()).length){ e.preventDefault(); e.returnValue = ''; }
+});
 
 /* ---------- تطبيق (PWA) / App ---------- */
 // بيشتغل بس على GitHub Pages. جوه Apps Script الصفحة في iframe ومينفعش تتثبت.
