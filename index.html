@@ -561,6 +561,10 @@ function human(s){
               : `اتعمل ${o.processed.length} Bill` + (o.failed && o.failed.length ? ` · ${o.failed.length} فشل` : '');
   }
   if (o.beforeGoLive) return en ? `Before go-live (${o.beforeGoLive}): received transfers marked, no bills.` : `قبل تاريخ البدء (${o.beforeGoLive}): التحويلات اتعلّمت من غير Bills.`;
+  if ('orders' in o && 'net' in o && !o.qboId && !o.dry){
+    return (en ? `${o.orders} orders · total ${n(o.total)} − shipping ${n(o.shipping)} = ${n(o.net)} to cash box` : `${o.orders} أوردر · إجمالي ${n(o.total)} − شحن ${n(o.shipping)} = ${n(o.net)} للصندوق`)
+      + (o.alreadyPosted ? (en ? ' · already posted' : ' · اترحّلت قبل كده') : '');
+  }
   if (o.qboId) return (en ? 'Posted to QuickBooks #' : 'اترحّل في QuickBooks رقم ') + o.qboId;
   if (o.dry) return en ? 'Dry run: nothing posted.' : 'تجربة: مفيش ترحيل.';
   if (o.ok === true) return en ? 'Done.' : 'تم.';
@@ -879,6 +883,10 @@ const HELP = {
   QBO_PENALTIES_ACCOUNT_ID:['حساب الجزاءات (إيراد أخرى عادةً).','Penalties account (usually other income).'],
   QBO_ADVANCES_ACCOUNT_ID:['حساب سلف الموظفين (أصل متداول).','Employee advances account (current asset).'],
   PAYROLL_DRY_RUN:['true = تجربة من غير ترحيل. false بس = ترحيل فعلي.','true = dry run. Only false posts for real.'],
+  ALEX_SHEET_ID:['شيت "Orders Flow" اللي فيه مستند صرف المندوب (الـ ID من الرابط).','The "Orders Flow" sheet with the rider’s cash-out document (ID from its URL).'],
+  ALEX_TAB:['اسم التاب (فاضي = Alex orders).','Tab name (empty = Alex orders).'],
+  QBO_ALEX_SHIPPING_ACCOUNT_ID:['حساب مصروف شحن مندوب إسكندرية. الفلوس بتروح حساب الصندوق اللي في إعدادات الرواتب.','Alexandria rider shipping expense account. Money goes to the cash box account set in Payroll.'],
+  ALEX_DRY_RUN:['true = تجربة من غير ترحيل. false بس = ترحيل فعلي.','true = dry run. Only false posts for real.'],
   SHEET_ID:['شيت مشاكل المزامنة (فاضي = شيت أوامر الشراء).','Sheet for sync issues (empty = the purchase-order sheet).']
 };
 function helpFor(k){ const h = HELP[k]; return h ? h[LANG === 'en' ? 1 : 0] : ''; }

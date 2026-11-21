@@ -16,6 +16,7 @@
 | `src/Bosta.gs` | تحويلات بوسطة ← قيد QBO + دوال QBO المشتركة (`getQboToken_`, `qboPost_`, `req_`) |
 | `src/Kashier.gs` | تحويلات كاشير ← قيد QBO |
 | `src/Products.gs` | مزامنة المنتجات شوبيفاي ← QBO |
+| `src/Alex.gs` | مندوب إسكندرية: تاب "Alex orders" ← قيد QBO (الصافي للصندوق، الشحن مصروف، تحصيل لكل أوردر) |
 | `src/Payroll.gs` | الإيجارات والرواتب ← قيود QBO (صندوق/بنك، شهري/يدوي، جزاء/سلفة) |
 | `tools/ExportProps.gs` | يتحط مؤقتاً في المشاريع القديمة لتصدير الـ Script Properties |
 

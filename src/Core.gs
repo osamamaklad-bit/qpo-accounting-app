@@ -123,6 +123,18 @@ const JOBS = [
       'QBO_INV_START_DATE', 'SHEET_ID']
   },
   {
+    id: 'alex', group: 'B', name: 'مندوب إسكندرية ← قيد QBO', name_en: 'Alexandria rider → QBO journal',
+    desc: 'بيقرا تاب "Alex orders": الصافي للصندوق، والشحن مصروف، والتحصيل لكل أوردر. قيد واحد لكل دفعة.',
+    desc_en: 'Reads the "Alex orders" tab: net to the cash box, shipping as an expense, a collection line per order. One journal per batch.',
+    dryKey: 'ALEX_DRY_RUN',
+    actions: [
+      { fn: 'alexPreview', label: 'تجربة الدفعة الحالية', label_en: 'Preview current batch' },
+      { fn: 'alexPost', label: 'رحّل الدفعة', label_en: 'Post this batch', post: true }
+    ],
+    triggers: [],
+    props: ['ALEX_SHEET_ID', 'ALEX_TAB', 'QBO_ALEX_SHIPPING_ACCOUNT_ID', 'ALEX_DRY_RUN']
+  },
+  {
     id: 'payroll', group: 'C', name: 'الرواتب والإيجارات ← قيود QBO', name_en: 'Payroll & rent → QBO journals',
     desc: 'إيجارات ورواتب من الصندوق أو البنك، شهري أو يدوي، مع خصم جزاء أو سلفة. البنود بتتعدل من تاب "الرواتب".',
     desc_en: 'Rent and salaries paid from cash or bank, monthly or manual, with a penalty or advance deduction. Edit the lines in the Payroll tab.',
@@ -142,7 +154,7 @@ const SHARED_PROPS = ['GO_LIVE_DATE', 'QBO_CLIENT_ID', 'QBO_CLIENT_SECRET', 'QBO
 
 const SECRET_KEYS = ['QBO_CLIENT_SECRET', 'QBO_REFRESH_TOKEN', 'CLIENT_SECRET', 'CLIENT_SECRET_QBO', 'META_TOKEN',
   'BOSTA_API_KEY', 'BOSTA_WEBHOOK_TOKEN', 'KASHIER_API_KEY', 'KASHIER_LOGIN_BODY', 'KASHIER_TEST_KEY', 'WEBHOOK_KEY'];
-const BOOL_KEYS = ['BOSTA_DRY_RUN', 'KASHIER_PAYOUT_DRY_RUN', 'PAYROLL_DRY_RUN'];
+const BOOL_KEYS = ['BOSTA_DRY_RUN', 'KASHIER_PAYOUT_DRY_RUN', 'PAYROLL_DRY_RUN', 'ALEX_DRY_RUN'];
 
 // ---------- تاريخ البدء الفعلي ----------
 // GO_LIVE_DATE (yyyy-MM-dd): أي حركة قبله مش بتترحّل في أي سكريبت. فاضي = مفيش حد.
@@ -786,7 +798,7 @@ function api_testConnections(t) {
 // بيتمسح أي مفتاح مش في الإعدادات (المشتركة + إعدادات كل سكريبت) ومش من بيانات الحالة.
 // بيانات الحالة (اللي اترحّل قبل كده، الجلسات، السجل) عمرها ما بتتمسح عشان القيود ما تتكررش.
 const STATE_KEYS = ['PROCESSED', 'GADS_DAYS_PROCESSED', 'GADS_TX_PROCESSED', 'META_CHARGES_PROCESSED',
-  'META_INVOICES_PROCESSED', 'PAYROLL_ITEMS', 'PAYROLL_POSTED', 'PAYROLL_REV'];
+  'META_INVOICES_PROCESSED', 'PAYROLL_ITEMS', 'PAYROLL_POSTED', 'PAYROLL_REV', 'ALEX_POSTED'];
 
 function keepProp_(k) {
   if (/^APP_/.test(k)) return true;                                   // كلمة السر والجلسات والسجل والمواعيد
