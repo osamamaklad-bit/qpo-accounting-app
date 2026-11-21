@@ -224,11 +224,46 @@ main > section,#payBody,#logsBody,.tablewrap{min-width:0;max-width:100%}
 .warnbox{background:var(--warn-soft);color:var(--warn);border-radius:14px;padding:10px 14px;font-size:13px;font-weight:600}
 
 /* modal + toast */
-.modal{position:fixed;inset:0;background:rgba(27,41,77,.45);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
-.modal .box{background:var(--surface);border-radius:22px;border:1px solid var(--border);box-shadow:var(--shadow);width:min(920px,100%);max-height:90vh;display:flex;flex-direction:column;padding:20px;gap:8px}
+.modal{position:fixed;inset:0;background:rgba(20,20,20,.42);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px;animation:pfFade .16s ease-out}
+.modal .box{position:relative;overflow:hidden;background:var(--surface);border-radius:22px;border:1px solid var(--border);box-shadow:0 24px 60px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.06);width:min(920px,100%);max-height:90vh;display:flex;flex-direction:column;padding:22px 20px 20px;gap:10px;animation:pfPop .2s cubic-bezier(.2,.9,.3,1.2)}
+.modal .box::before{content:"";position:absolute;inset-inline:0;top:0;height:5px;background:linear-gradient(90deg,var(--red) 0 33%,var(--cyan) 33% 66%,var(--qb) 66%)}
 .modal .box .row b{flex:1;font-family:var(--f-display);font-size:17px;color:var(--navy)}
+.mhead{display:flex;align-items:center;gap:10px}
+.mhead .logo{width:38px;height:38px;border-radius:12px;background:var(--peach);display:grid;place-items:center;flex:none;overflow:hidden}
+.mhead .logo img{width:30px;height:30px;object-fit:contain}
+.mhead b{flex:1;font-family:var(--f-display);font-size:17px;color:var(--navy)}
+/* branded confirm dialog */
+.dlg .box{width:min(440px,100%);padding:24px 22px 20px;gap:14px}
+.dlg .ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:22px;flex:none;background:var(--soft);color:var(--navy)}
+.dlg.k-danger .ic{background:var(--red-soft);color:var(--red)}
+.dlg.k-money .ic{background:var(--qb-soft);color:var(--qb-dark)}
+.dlg.k-money .box::before{background:var(--qb)}
+.dlg.k-money .acts .go{background:var(--qb)}
+.dlg.k-qbo .ic{background:var(--qb-soft);color:var(--qb-dark)}
+.dlg.k-warn .ic{background:var(--warn-soft);color:var(--warn)}
+.dlg.k-danger .box::before{background:var(--red)}
+.dlg.k-qbo .box::before{background:var(--qb)}
+.dlg.k-warn .box::before{background:#f0a020}
+.dlg h3{margin:0;font-family:var(--f-display);font-size:18px;color:var(--navy)}
+.dlg .msg{white-space:pre-line;color:var(--navy-2);font-size:14.5px;line-height:1.7;max-height:46vh;overflow:auto;word-break:break-word}
+.dlg #dlgIn{width:100%;font-size:16px;padding:11px 14px;border-radius:12px}
+.dlg .acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:4px}
+.dlg .acts button{min-width:110px}
+.dlg .acts .ghost{background:var(--surface);color:var(--navy);border:1px solid var(--border)}
+.dlg .acts .ghost:hover{background:var(--soft)}
+.dlg .acts .go{background:var(--navy);color:#fff;border:0}
+.dlg.k-danger .acts .go{background:var(--red)}
+.dlg.k-danger .acts .go:hover{background:var(--red-dark)}
+.dlg.k-qbo .acts .go{background:var(--qb)}
+.dlg.k-qbo .acts .go:hover{background:var(--qb-dark)}
+.dlg .acts button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+@keyframes pfFade{from{opacity:0}to{opacity:1}}
+@keyframes pfPop{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
+@media(max-width:520px){.dlg{align-items:flex-end}.dlg .box{border-radius:22px 22px 16px 16px}.dlg .acts button{flex:1}}
 pre{background:#17181b;color:#eef0f3;padding:14px;border-radius:14px;overflow:auto;flex:1;white-space:pre-wrap;word-break:break-word;font:12px/1.55 var(--f-mono);direction:ltr;text-align:left;margin:0}
-#toast{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom,0px));inset-inline-start:18px;background:var(--navy);color:#fff;padding:11px 16px;border-radius:14px;z-index:30;max-width:min(440px,calc(100% - 36px));box-shadow:0 8px 24px rgba(0,0,0,.18);border-inline-start:5px solid var(--cyan)}
+#toast{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom,0px));inset-inline-start:18px;background:var(--navy);color:#fff;padding:11px 16px;border-radius:14px;z-index:30;max-width:min(440px,calc(100% - 36px));box-shadow:0 8px 24px rgba(0,0,0,.18);border-inline-start:5px solid var(--cyan);animation:pfPop .18s ease-out;font-weight:600}
+#toast.t-err{background:var(--red-dark);border-inline-start-color:#fff}
+#toast.t-ok{border-inline-start-color:var(--qb)}
 
 @media(max-width:760px){
   .prop{grid-template-columns:1fr}
@@ -351,9 +386,17 @@ pre{background:#17181b;color:#eef0f3;padding:14px;border-radius:14px;overflow:au
 
 <div id="modal" class="modal hidden" onclick="if(event.target===this)closeModal()">
   <div class="box" role="dialog" aria-modal="true">
-    <div class="row"><b id="mTitle"></b><button class="sm" onclick="closeModal()" data-i="close"></button></div>
+    <div class="mhead"><span class="logo"><img src="https://osamamaklad-bit.github.io/qpo-accounting-app/icons/logo-512.png" alt="" onerror="this.remove()"></span><b id="mTitle"></b><button class="sm" onclick="closeModal()" data-i="close"></button></div>
     <div id="mMeta" class="badge"></div>
     <pre id="mLog"></pre>
+  </div>
+</div>
+<div id="dlg" class="modal dlg hidden" onclick="if(event.target===this)dlgDone(false)">
+  <div class="box" role="alertdialog" aria-modal="true" aria-labelledby="dlgTitle" aria-describedby="dlgMsg">
+    <div class="mhead"><span class="ic" id="dlgIc" aria-hidden="true"></span><h3 id="dlgTitle"></h3></div>
+    <div class="msg" id="dlgMsg" dir="auto"></div>
+    <input id="dlgIn" class="hidden" inputmode="decimal" autocomplete="off" onkeydown="if(event.key==='Enter')dlgDone(true)">
+    <div class="acts"><button class="ghost" id="dlgNo" onclick="dlgDone(false)"></button><button class="go" id="dlgOk" onclick="dlgDone(true)"></button></div>
   </div>
 </div>
 <div id="toast" class="hidden" role="status"></div>
@@ -401,7 +444,7 @@ const I18N = {
     badReply:c => `رد غير متوقع من السكريبت (HTTP ${c})`,
     allScripts:'كل السكريبتات', refresh:'تحديث', openSheet:'فتح شيت السجل', loading:'جاري التحميل...', noRuns:'لا يوجد سجل بعد.',
     hTime:'الوقت', hScript:'السكريبت', hSource:'المصدر', hAction:'الإجراء', hStatus:'الحالة', hSecs:'ث', hSummary:'الملخص',
-    close:'إغلاق', noLog:'(لا يوجد لوج)',
+    close:'إغلاق', noLog:'(لا يوجد لوج)', dlgOk:'تأكيد', dlgNo:'إلغاء', dlgConfirm:'تأكيد', dlgDelete:'حذف', dlgPost:'ترحيل في كويك بوكس', dlgPostOk:'رحّل', dlgUnsaved:'تغييرات مش محفوظة', dlgLeave:'اخرج من غير حفظ', dlgSave:'حفظ الإعدادات', dlgSaveOk:'احفظ', dlgDry:'إيقاف وضع التجربة', dlgDryOk:'أيوه، شغّل فعلي',
     saveChanges:'حفظ التغييرات', unsavedLeave:n => `عندك ${n} تغيير مش محفوظ في الإعدادات. تسيبهم؟`,
     anyStatus:'كل الحالات', search:'دوّر في السجل...', noMatch:'مفيش نتايج مطابقة.', shownOf:(a,b) => `${a} من ${b}`, loadAccounts:'تحميل حسابات QBO', testConn:'اختبار الاتصال', testing:'جاري الاختبار...',
     secretSet:'•••••• محفوظ — اكتب لتغييره', secretUnset:'غير مضبوط', boolEmpty:'— (تجربة)', boolTrue:'true (تجربة، بدون ترحيل)', boolFalse:'false (ترحيل فعلي)',
@@ -458,7 +501,7 @@ const I18N = {
     badReply:c => `Unexpected reply from the script (HTTP ${c})`,
     allScripts:'All scripts', refresh:'Refresh', openSheet:'Open log sheet', loading:'Loading…', noRuns:'No runs yet.',
     hTime:'Time', hScript:'Script', hSource:'Source', hAction:'Action', hStatus:'Status', hSecs:'Sec', hSummary:'Summary',
-    close:'Close', noLog:'(no log)',
+    close:'Close', noLog:'(no log)', dlgOk:'Confirm', dlgNo:'Cancel', dlgConfirm:'Please confirm', dlgDelete:'Delete', dlgPost:'Post to QuickBooks', dlgPostOk:'Post', dlgUnsaved:'Unsaved changes', dlgLeave:'Leave without saving', dlgSave:'Save settings', dlgSaveOk:'Save', dlgDry:'Turn off dry run', dlgDryOk:'Yes, go live',
     saveChanges:'Save changes', unsavedLeave:n => `You have ${n} unsaved change${n===1?'':'s'} in Settings. Leave anyway?`,
     anyStatus:'Any status', search:'Search the log…', noMatch:'No matching runs.', shownOf:(a,b) => `${a} of ${b}`, loadAccounts:'Load QBO accounts', testConn:'Test connections', testing:'Testing…',
     secretSet:'•••••• saved — type to replace', secretUnset:'Not set', boolEmpty:'— (dry run)', boolTrue:'true (dry run, no posting)', boolFalse:'false (post for real)',
@@ -509,7 +552,7 @@ function toggleLang(){
 let TOKEN = null, STATE = null, SETTINGS = null, ACCOUNTS = null, RUNNING = false, LOG_SEQ = 0, PENDING_LOG_JOB = null;
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function $(id){ return document.getElementById(id); }
-function toast(msg, ms){ const el=$('toast'); el.textContent=msg; el.classList.remove('hidden'); clearTimeout(el._h); if(ms!==0) el._h=setTimeout(()=>el.classList.add('hidden'), ms||3500); }
+function toast(msg, ms, kind){ const el=$('toast'); el.textContent=msg; el.className = kind ? 't-'+kind : ''; el.setAttribute('role', kind==='err'?'alert':'status'); clearTimeout(el._h); if(ms!==0) el._h=setTimeout(()=>el.classList.add('hidden'), ms||3500); }
 function errMsg(e){ return String((e && e.message) || e).replace(/^Error:\s*/,''); }
 function st(s){ return ['ok','warn','error','running','stopped'].includes(s) ? t(s) : s; }
 function src(s){ return ['manual','schedule','webhook'].includes(s) ? t(s) : s; }
@@ -609,10 +652,10 @@ async function doLogin(){
 async function logout(){ try{ await call('api_logout', TOKEN);}catch(e){} showLogin(); }
 function start(){ $('login').classList.add('hidden'); $('app').classList.remove('hidden'); showTab('home'); }
 
-function showTab(name){
+async function showTab(name){
   const leaving = !$('tab-settings').classList.contains('hidden') && name !== 'settings';
-  if (leaving && SETTINGS){ const n = Object.keys(pendingChanges()).length; if (n && !confirm(t('unsavedLeave', n))) return; }
-  if (!$('tab-payroll').classList.contains('hidden') && name !== 'payroll' && PAY_DIRTY && !confirm(t('unsavedPay'))) return;
+  if (leaving && SETTINGS){ const n = Object.keys(pendingChanges()).length; if (n && !await ask(t('unsavedLeave', n), {kind:'warn', title:t('dlgUnsaved'), ok:t('dlgLeave')})) return; }
+  if (!$('tab-payroll').classList.contains('hidden') && name !== 'payroll' && PAY_DIRTY && !await ask(t('unsavedPay'), {kind:'warn', title:t('dlgUnsaved'), ok:t('dlgLeave')})) return;
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab===name));
   ['home','payroll','logs','settings','account'].forEach(n => $('tab-'+n).classList.toggle('hidden', n!==name));
   if(name==='payroll') loadPayroll();
@@ -624,7 +667,7 @@ function showTab(name){
 /* ---------- الرئيسية / Overview ---------- */
 async function loadHome(){
   try{ STATE = await call('api_state', TOKEN); renderHome(); }
-  catch(e){ if(errMsg(e)!=='AUTH') toast(errMsg(e), 6000); }
+  catch(e){ if(errMsg(e)!=='AUTH') toast(errMsg(e), 6000, 'err'); }
 }
 function hours(sel){ let o=''; for(let h=0;h<24;h++) o+=`<option value="${h}" ${h===sel?'selected':''}>${String(h).padStart(2,'0')}:00</option>`; return o; }
 
@@ -713,7 +756,7 @@ async function runHealth(){
   if (HEALTH_RUNNING) return;
   HEALTH_RUNNING = true; renderHome();
   try{ STATE.health = await call('api_healthCheck', TOKEN); }
-  catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000); }
+  catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000, 'err'); }
   finally{ HEALTH_RUNNING = false; if (STATE) renderHome(); }
 }
 
@@ -722,19 +765,19 @@ async function setTrig(ji, ti){
   const on = $(`tg-${ji}-${ti}`).checked, hr = $(`th-${ji}-${ti}`) ? Number($(`th-${ji}-${ti}`).value) : 0;
   toast(t('saving'), 0);
   try{ STATE = await call('api_setTrigger', TOKEN, tr.fn, on, hr); renderHome(); toast(on ? t('schedOn') : t('schedOff')); }
-  catch(e){ toast(errMsg(e), 6000); loadHome(); }
+  catch(e){ toast(errMsg(e), 6000, 'err'); loadHome(); }
 }
 async function delTrig(id){
-  if(!confirm(t('delTrig'))) return;
-  try{ STATE = await call('api_deleteTrigger', TOKEN, id); renderHome(); toast(t('deleted')); }catch(e){ toast(errMsg(e), 6000); }
+  if(!await ask(t('delTrig'), {kind:'danger', title:t('dlgDelete'), ok:t('del')})) return;
+  try{ STATE = await call('api_deleteTrigger', TOKEN, id); renderHome(); toast(t('deleted'), 3500, 'ok'); }catch(e){ toast(errMsg(e), 6000, 'err'); }
 }
 function setActsDisabled(on){ document.querySelectorAll('#tab-home .acts button').forEach(b => b.disabled = on); }
 
 async function runAct(ji, ai){
   if (RUNNING){ toast(t('busy')); return; }
   const j = STATE.jobs[ji], a = j.actions[ai], label = pick(j,'name') + ' ← ' + pick(a,'label');
-  if (a.post && j.dry !== true){ if (!confirm(t('postConfirm', label))) return; }
-  else if (a.confirm && !confirm(t('confirm', pick(a,'label')))) return;
+  if (a.post && j.dry !== true){ if (!await ask(t('postConfirm', label), {kind:'qbo', title:t('dlgPost'), ok:t('dlgPostOk')})) return; }
+  else if (a.confirm && !await ask(t('confirm', pick(a,'label')))) return;
 
   RUNNING = true; setActsDisabled(true);
   const t0 = Date.now();
@@ -744,7 +787,7 @@ async function runAct(ji, ai){
     toast(st(r.status) + ' · ' + r.secs + ' ' + t('secs'));
     openModal(label, `${pill(r.status)} ${esc(human(r.summary))}`, r.log);
   }catch(e){
-    if (errMsg(e) !== 'AUTH') toast(Date.now() - t0 > 300000 ? t('tooLong') : errMsg(e), 12000);
+    if (errMsg(e) !== 'AUTH') toast(Date.now() - t0 > 300000 ? t('tooLong') : errMsg(e), 12000, 'err');
   }finally{
     RUNNING = false;
     loadHome();
@@ -752,15 +795,15 @@ async function runAct(ji, ai){
 }
 async function toggleDry(ji){
   const j = STATE.jobs[ji];
-  if (j.dry && !confirm(t('dryOffConfirm'))) return;
+  if (j.dry && !await ask(t('dryOffConfirm'), {kind:'qbo', title:t('dlgDry'), ok:t('dlgDryOk')})) return;
   const ch = {}; ch[j.dryKey] = j.dry ? 'false' : 'true';
-  try{ await call('api_saveSettings', TOKEN, ch); toast(t('done')); loadHome(); }catch(e){ toast(errMsg(e), 6000); }
+  try{ await call('api_saveSettings', TOKEN, ch); toast(t('done'), 3500, 'ok'); loadHome(); }catch(e){ toast(errMsg(e), 6000, 'err'); }
 }
 async function copyText(ji){
   const v = STATE.jobs[ji].webhook;
-  try{ await navigator.clipboard.writeText(v); toast(t('copied')); return; }catch(e){}
+  try{ await navigator.clipboard.writeText(v); toast(t('copied'), 3500, 'ok'); return; }catch(e){}
   const ta = document.createElement('textarea'); ta.value=v; document.body.appendChild(ta); ta.select();
-  try{ document.execCommand('copy'); toast(t('copied')); }catch(e){ toast(t('copyManual')); }
+  try{ document.execCommand('copy'); toast(t('copied'), 3500, 'ok'); }catch(e){ toast(t('copyManual')); }
   ta.remove();
 }
 
@@ -797,10 +840,30 @@ async function showLog(id){
   try{
     const r = await call('api_logDetail', TOKEN, id);
     openModal(actionLabel(r.job, r.action) + ' — ' + r.time, `${pill(r.status)} ${esc(src(r.source))} · ${esc(r.secs)} ${t('secs')} · ${esc(human(r.summary))}`, r.log);
-  }catch(e){ toast(errMsg(e), 6000); }
+  }catch(e){ toast(errMsg(e), 6000, 'err'); }
 }
 function openModal(title, metaHtml, log){ $('mTitle').textContent=title; $('mMeta').innerHTML=metaHtml; $('mLog').textContent = cleanLog(log) || t('noLog'); $('modal').classList.remove('hidden'); }
 function closeModal(){ $('modal').classList.add('hidden'); }
+/* نافذة تأكيد ببراندينج بتفريند بدل confirm() / branded confirm dialog */
+let DLG = null;
+const DLG_IC = { danger:'🗑', qbo:'⇄', warn:'!', info:'?', money:'+' };
+function ask(msg, o){
+  o = o || {}; const k = o.kind || 'info';
+  if (DLG) DLG.res(false);
+  $('dlg').className = 'modal dlg k-' + k;
+  $('dlgIc').textContent = DLG_IC[k] || '?';
+  $('dlgTitle').textContent = o.title || t('dlgConfirm');
+  $('dlgMsg').textContent = msg;
+  $('dlgOk').textContent = o.ok || t('dlgOk');
+  $('dlgNo').textContent = o.no || t('dlgNo');
+  const inp = $('dlgIn'); inp.classList.toggle('hidden', !o.input); inp.value = o.value || ''; inp.placeholder = o.placeholder || '';
+  const back = document.activeElement;
+  return new Promise(res => {
+    DLG = { res: v => { DLG = null; $('dlg').classList.add('hidden'); try{ back && back.focus && back.focus(); }catch(e){} res(o.input ? (v ? inp.value : null) : v); } };
+    setTimeout(() => (o.input ? inp : (k === 'danger' || k === 'warn' ? $('dlgNo') : $('dlgOk'))).focus(), 30);
+  });
+}
+function dlgDone(v){ if (DLG) DLG.res(v); }
 
 /* ---------- الإعدادات / Settings ---------- */
 async function loadSettings(){
@@ -927,25 +990,25 @@ async function saveSettings(){
   const ch = pendingChanges();
   const keys = Object.keys(ch);
   if (!keys.length){ toast(t('noChanges')); return; }
-  if (!confirm(t('saveConfirm', keys.length, keys.join('\n')))) return;
-  try{ const r = await call('api_saveSettings', TOKEN, ch); toast(t('savedN', r.saved)); loadSettings(); }
-  catch(e){ toast(errMsg(e), 6000); }
+  if (!await ask(t('saveConfirm', keys.length, keys.join('\n')), {title:t('dlgSave'), ok:t('dlgSaveOk')})) return;
+  try{ const r = await call('api_saveSettings', TOKEN, ch); toast(t('savedN', r.saved), 3500, 'ok'); loadSettings(); }
+  catch(e){ toast(errMsg(e), 6000, 'err'); }
 }
 async function addProp(){
   const k = $('newKey').value.trim().toUpperCase(), v = $('newVal').value;
   if (!k) return;
   const ch = {}; ch[k] = v;
-  try{ await call('api_saveSettings', TOKEN, ch); toast(t('added')); loadSettings(); }catch(e){ toast(errMsg(e), 6000); }
+  try{ await call('api_saveSettings', TOKEN, ch); toast(t('added'), 3500, 'ok'); loadSettings(); }catch(e){ toast(errMsg(e), 6000, 'err'); }
 }
 async function delProp(k){
-  if (!confirm(t('delConfirm', k))) return;
+  if (!await ask(t('delConfirm', k), {kind:'danger', title:t('dlgDelete'), ok:t('del')})) return;
   const ch = {}; ch[k] = null;
-  try{ await call('api_saveSettings', TOKEN, ch); toast(t('deleted')); loadSettings(); }catch(e){ toast(errMsg(e), 6000); }
+  try{ await call('api_saveSettings', TOKEN, ch); toast(t('deleted'), 3500, 'ok'); loadSettings(); }catch(e){ toast(errMsg(e), 6000, 'err'); }
 }
 async function loadAccounts(){
   toast(t('loadingAcc'), 0);
   try{ ACCOUNTS = await call('api_qboAccounts', TOKEN); toast(t('accountsN', ACCOUNTS.length)); if (SETTINGS) renderSettings(); }
-  catch(e){ toast(errMsg(e), 8000); }
+  catch(e){ toast(errMsg(e), 8000, 'err'); }
 }
 async function testConn(){
   $('connRes').textContent = t('testing');
@@ -958,7 +1021,7 @@ async function cleanupProps(){
     const r = await call('api_cleanupProps', TOKEN, false);
     if (!r.keys.length){ $('cleanRes').textContent = t('noUnused'); return; }
     $('cleanRes').innerHTML = esc(t('unused', r.keys.length)) + '<span class="mono">' + esc(r.keys.join(', ')) + '</span>';
-    if (!confirm(t('cleanConfirm', r.keys.length, r.keys.join('\n')))) return;
+    if (!await ask(t('cleanConfirm', r.keys.length, r.keys.join('\n')), {kind:'danger', title:t('dlgDelete'), ok:t('del')})) return;
     const d = await call('api_cleanupProps', TOKEN, true);
     $('cleanRes').innerHTML = esc(t('cleaned', d.keys.length)) + '<span class="mono">' + esc(d.keys.join(', ')) + '</span>';
     loadSettings();
@@ -967,7 +1030,7 @@ async function cleanupProps(){
 async function importProps(){
   const txt = $('impText').value.trim(); if (!txt) return;
   const over = $('impOver').checked;
-  if (!confirm(over ? t('impConfirmOver') : t('impConfirm'))) return;
+  if (!await ask(over ? t('impConfirmOver') : t('impConfirm'), {kind: over ? 'warn' : 'info'})) return;
   try{
     const r = await call('api_importProps', TOKEN, txt, over);
     $('impRes').innerHTML = esc(t('impAdded', r.added)) + (r.overwritten.length ? esc(t('impReplaced')) + `<span class="mono">${esc(r.overwritten.join(', '))}</span>` : '') +
@@ -1042,13 +1105,13 @@ async function savePayAccounts(){
   const ch = {};
   document.querySelectorAll('#payAcc [data-acc]').forEach(el => { const v = el.value.trim(); if (v !== el.dataset.o) ch[el.dataset.acc] = v; });
   if (!Object.keys(ch).length){ toast(t('noChanges')); return; }
-  try{ await call('api_saveSettings', TOKEN, ch); toast(t('savedOk')); const keep = PAYROLL.items; await loadPayroll(); }
-  catch(e){ toast(errMsg(e), 8000); }
+  try{ await call('api_saveSettings', TOKEN, ch); toast(t('savedOk'), 3500, 'ok'); const keep = PAYROLL.items; await loadPayroll(); }
+  catch(e){ toast(errMsg(e), 8000, 'err'); }
 }
 async function loadAccountsFor(where){
   toast(t('loadingAcc'), 0);
   try{ ACCOUNTS = await call('api_qboAccounts', TOKEN); toast(t('accountsN', ACCOUNTS.length)); if (where === 'pay' && PAYROLL) renderPayAccounts(); if (SETTINGS) renderSettings(); }
-  catch(e){ toast(errMsg(e), 8000); }
+  catch(e){ toast(errMsg(e), 8000, 'err'); }
 }
 function setPayDirty(on){ PAY_DIRTY = on; $('paySaveBtn').innerHTML = esc(t('paySave')) + (on ? '<span class="count">•</span>' : ''); }
 function collectPayroll(){
@@ -1066,17 +1129,17 @@ $('payBody').addEventListener('change', e => {
   if (['type','recurrence','dkind'].includes(e.target.dataset.f)){ PAYROLL.items = collectPayroll(); renderPayroll(); }
 });
 async function savePayroll(){
-  try{ PAYROLL = await call('api_payrollSave', TOKEN, collectPayroll(), PAYROLL.rev); PAY_DIRTY = false; renderPayroll(); toast(t('savedOk')); }
-  catch(e){ toast(errMsg(e), 10000); }
+  try{ PAYROLL = await call('api_payrollSave', TOKEN, collectPayroll(), PAYROLL.rev); PAY_DIRTY = false; renderPayroll(); toast(t('savedOk'), 3500, 'ok'); }
+  catch(e){ toast(errMsg(e), 10000, 'err'); }
 }
 function addPayRow(){
   PAYROLL.items = collectPayroll();
   PAYROLL.items.push({id:'', type:'salary', name:'', amount:0, payFrom:'cash', recurrence:'monthly', day:1, advanceBalance:0, deduction:{kind:'none', amount:0, note:''}});
   setPayDirty(true); renderPayroll();
 }
-function delPayRow(i){
+async function delPayRow(i){
   const items = collectPayroll();
-  if (!confirm(t('delRow', items[i].name || '—'))) return;
+  if (!await ask(t('delRow', items[i].name || '—'), {kind:'danger', title:t('dlgDelete'), ok:t('del')})) return;
   items.splice(i, 1); PAYROLL.items = items; setPayDirty(true); renderPayroll();
 }
 function quickAddPayroll(){
@@ -1104,30 +1167,30 @@ async function payPreview(){
     const r = await call('api_runAction', TOKEN, 'payroll', 'payrollPreview');
     toast(st(r.status) + ' · ' + r.secs + ' ' + t('secs'));
     openModal(t('payPreview'), `${pill(r.status)} ${esc(r.summary)}`, r.log);
-  }catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000); }
+  }catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000, 'err'); }
   finally{ RUNNING = false; }
 }
 async function payNow(id){
   if (PAY_DIRTY){ toast(t('payDirty'), 6000); return; }
   if (RUNNING){ toast(t('busy')); return; }
   const it = PAYROLL.items.find(x => x.id === id); if (!it) return;
-  if (!confirm(PAYROLL.dry ? t('payConfirmDry', it.name) : t('payConfirm', it.name, fmt(it.amount)))) return;
+  if (!await ask(PAYROLL.dry ? t('payConfirmDry', it.name) : t('payConfirm', it.name, fmt(it.amount)), {kind:'qbo', title:t('dlgPost'), ok:t('dlgPostOk')})) return;
   RUNNING = true; toast(t('runningToast', it.name), 0);
   try{ const r = await call('api_payrollPay', TOKEN, id); PAYROLL = r.state; renderPayroll();
        toast(st(r.status) + ' · ' + r.secs + ' ' + t('secs')); openModal(it.name, `${pill(r.status)} ${esc(r.summary)}`, r.log); }
-  catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000); }
+  catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000, 'err'); }
   finally{ RUNNING = false; }
 }
 async function newAdvance(id){
   if (PAY_DIRTY){ toast(t('payDirty'), 6000); return; }
   const it = PAYROLL.items.find(x => x.id === id); if (!it) return;
-  const v = prompt(t('advPrompt', it.name)); if (v === null) return;
+  const v = await ask(t('advPrompt', it.name), {kind:'money', title:t('newAdv') + ' — ' + it.name, ok:t('dlgOk'), input:true, placeholder:'0'}); if (v === null) return;
   const amount = Number(String(v).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/,/g, ''));
   if (!(amount > 0)) return;
   RUNNING = true; toast(t('runningToast', t('newAdv') + ' ' + it.name), 0);
   try{ const r = await call('api_payrollAdvance', TOKEN, id, amount); PAYROLL = r.state; renderPayroll();
        toast(st(r.status)); openModal(t('newAdv') + ' — ' + it.name, `${pill(r.status)} ${esc(r.summary)}`, r.log); }
-  catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000); }
+  catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000, 'err'); }
   finally{ RUNNING = false; }
 }
 
@@ -1135,10 +1198,18 @@ async function newAdvance(id){
 async function changePw(){
   if ($('newPw').value !== $('newPw2').value){ toast(t('pwMismatch')); return; }
   try{ await call('api_changePassword', TOKEN, $('oldPw').value, $('newPw').value); showLogin(t('pwDone')); }
-  catch(e){ toast(errMsg(e), 6000); }
+  catch(e){ toast(errMsg(e), 6000, 'err'); }
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('keydown', e => {
+  if (DLG){
+    if (e.key === 'Escape'){ e.preventDefault(); dlgDone(false); }
+    else if (e.key === 'Tab'){ const f = [$('dlgIn'), $('dlgNo'), $('dlgOk')].filter(x => !x.classList.contains('hidden')); e.preventDefault();
+      const i = f.indexOf(document.activeElement); f[(i + (e.shiftKey ? f.length - 1 : 1)) % f.length].focus(); }
+    return;
+  }
+  if (e.key === 'Escape') closeModal();
+});
 $('settingsBody').addEventListener('input', updatePending);
 $('settingsBody').addEventListener('change', updatePending);
 window.addEventListener('beforeunload', e => {
