@@ -233,6 +233,14 @@ main > section,#payBody,#logsBody,.tablewrap{min-width:0;max-width:100%}
 .mhead .logo img{width:30px;height:30px;object-fit:contain}
 .mhead b{flex:1;font-family:var(--f-display);font-size:17px;color:var(--navy)}
 /* branded confirm dialog */
+#mBody{overflow:auto;display:grid;gap:12px}
+.stmt-sum{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+.stmt-sum>div{background:var(--soft);border:1px solid var(--border);border-radius:14px;padding:10px 14px;display:grid;gap:2px}
+.stmt-sum span{font-size:12px;color:var(--mute);font-weight:600}
+.stmt-sum b{font-size:18px;color:var(--navy)}
+.stmt-sum .stmt-big{background:var(--peach);border-color:var(--peach-2)}
+.stmt-sum .stmt-big b{font-size:24px;color:var(--red-dark)}
+@media(max-width:520px){.stmt-sum{grid-template-columns:1fr 1fr}.stmt-sum .stmt-big{grid-column:1/-1}}
 .dlg .box{width:min(440px,100%);padding:24px 22px 20px;gap:14px}
 .dlg .ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:22px;flex:none;background:var(--soft);color:var(--navy)}
 .dlg.k-danger .ic{background:var(--red-soft);color:var(--red)}
@@ -389,6 +397,7 @@ pre{background:#17181b;color:#eef0f3;padding:14px;border-radius:14px;overflow:au
     <div class="mhead"><span class="logo"><img src="https://osamamaklad-bit.github.io/qpo-accounting-app/icons/logo-512.png" alt="" onerror="this.remove()"></span><b id="mTitle"></b><button class="sm" onclick="closeModal()" data-i="close"></button></div>
     <div id="mMeta" class="badge"></div>
     <pre id="mLog"></pre>
+    <div id="mBody" class="hidden"></div>
   </div>
 </div>
 <div id="dlg" class="modal dlg hidden" onclick="if(event.target===this)dlgDone(false)">
@@ -416,7 +425,7 @@ const I18N = {
     paySave:'حفظ البنود', pType:'النوع', pName:'الاسم', pAmount:'المبلغ', pFrom:'الدفع من', pRec:'التكرار', pDay:'يوم', pDed:'خصم المرة الجاية (رواتب)',
     pAdv:'رصيد السلفة', pMonth:'الشهر ده', rent:'إيجار', salary:'راتب', cash:'صندوق', bank:'بنك', monthly:'شهري', manualRec:'يدوي',
     dedNone:'بدون', dedPenalty:'جزاء', dedAdvance:'من السلفة', dedNote:'سبب', paid:'اتدفع', dueOn:d => `مستحق يوم ${d}`, manualOnly:'يدوي',
-    payNow:'ادفع', newAdv:'سلفة', total:'الإجمالي', net:'الصافي', payInfo:(p,n) => `شهر ${p} · ${n} بند`,
+    payNow:'ادفع', newAdv:'سلفة', stmt:'كشف', stmtTitle:n => `كشف سلف ${n}`, stmtBal:'المتبقي عليه', stmtOpen:'رصيد افتتاحي', stmtNone:'مفيش حركات مسجلة لسه. أي سلفة أو خصم أو تعديل في الرصيد هيظهر هنا.', stmtDate:'التاريخ', stmtKind:'الحركة', stmtAmt:'المبلغ', stmtAfter:'الرصيد بعدها', stmtAdv:'سلفة جديدة', stmtDed:'خصم من المرتب', stmtEdit:'تعديل يدوي', stmtGiven:'إجمالي السلف', stmtPaid:'إجمالي المخصوم', stmtMax:n => `بيظهر آخر ${n} حركة.`, total:'الإجمالي', net:'الصافي', payInfo:(p,n) => `شهر ${p} · ${n} بند`,
     payMissing:k => `ناقص حسابات في الإعدادات ← الرواتب والإيجارات: ${k}`, payDirty:'عندك تعديلات في البنود مش محفوظة. احفظ الأول.',
     payConfirm:(n,a) => `${n}: هيتعمل قيد بـ ${a} في QuickBooks. متأكد؟`, payConfirmDry:n => `تجربة (من غير ترحيل) لـ ${n}؟`,
     advPrompt:n => `مبلغ السلفة الجديدة لـ ${n} (هيتعمل قيد وهيزود رصيد السلفة):`, delRow:n => `حذف بند ${n}؟ (لازم تحفظ بعدها)`,
@@ -473,7 +482,7 @@ const I18N = {
     paySave:'Save lines', pType:'Type', pName:'Name', pAmount:'Amount', pFrom:'Paid from', pRec:'Repeat', pDay:'Day', pDed:'Next-payment deduction (salaries)',
     pAdv:'Advance balance', pMonth:'This month', rent:'Rent', salary:'Salary', cash:'Cash box', bank:'Bank', monthly:'Monthly', manualRec:'Manual',
     dedNone:'None', dedPenalty:'Penalty', dedAdvance:'From advance', dedNote:'Reason', paid:'Paid', dueOn:d => `Due on day ${d}`, manualOnly:'Manual',
-    payNow:'Pay', newAdv:'Advance', total:'Total', net:'Net', payInfo:(p,n) => `Month ${p} · ${n} lines`,
+    payNow:'Pay', newAdv:'Advance', stmt:'Statement', stmtTitle:n => `Advances statement — ${n}`, stmtBal:'Outstanding', stmtOpen:'Opening balance', stmtNone:'No movements recorded yet. Advances, deductions and balance edits will show here.', stmtDate:'Date', stmtKind:'Movement', stmtAmt:'Amount', stmtAfter:'Balance after', stmtAdv:'New advance', stmtDed:'Salary deduction', stmtEdit:'Manual edit', stmtGiven:'Total advanced', stmtPaid:'Total deducted', stmtMax:n => `Shows the last ${n} movements.`, total:'Total', net:'Net', payInfo:(p,n) => `Month ${p} · ${n} lines`,
     payMissing:k => `Missing accounts in Settings → Payroll & rent: ${k}`, payDirty:'You have unsaved line edits. Save first.',
     payConfirm:(n,a) => `${n}: a journal of ${a} will be posted to QuickBooks. Continue?`, payConfirmDry:n => `Dry run (no posting) for ${n}?`,
     advPrompt:n => `New advance amount for ${n} (posts a journal and raises the advance balance):`, delRow:n => `Delete the line for ${n}? (save afterwards)`,
@@ -842,7 +851,13 @@ async function showLog(id){
     openModal(actionLabel(r.job, r.action) + ' — ' + r.time, `${pill(r.status)} ${esc(src(r.source))} · ${esc(r.secs)} ${t('secs')} · ${esc(human(r.summary))}`, r.log);
   }catch(e){ toast(errMsg(e), 6000, 'err'); }
 }
-function openModal(title, metaHtml, log){ $('mTitle').textContent=title; $('mMeta').innerHTML=metaHtml; $('mLog').textContent = cleanLog(log) || t('noLog'); $('modal').classList.remove('hidden'); }
+function openModal(title, metaHtml, log, bodyHtml){
+  $('mTitle').textContent=title; $('mMeta').innerHTML=metaHtml;
+  const isBody = bodyHtml != null;
+  $('mLog').classList.toggle('hidden', isBody); $('mBody').classList.toggle('hidden', !isBody);
+  if (isBody) $('mBody').innerHTML = bodyHtml; else $('mLog').textContent = cleanLog(log) || t('noLog');
+  $('modal').classList.remove('hidden');
+}
 function closeModal(){ $('modal').classList.add('hidden'); }
 /* نافذة تأكيد ببراندينج بتفريند بدل confirm() / branded confirm dialog */
 let DLG = null;
@@ -1068,7 +1083,7 @@ function renderPayroll(){
       <td>${paid ? `<span class="pill ok">${t('paid')} · QBO ${esc(paid)}</span>` : `<span class="badge">${it.recurrence==='monthly' ? esc(t('dueOn', it.day)) : t('manualOnly')}</span>`}</td>
       <td><div class="row" style="flex-wrap:nowrap">
         <button class="sm ${P.dry?'':'qbpost'}" ${paid?'disabled':''} onclick="payNow('${esc(it.id)}')">${t('payNow')}</button>
-        ${sal ? `<button class="sm" onclick="newAdvance('${esc(it.id)}')">${t('newAdv')}</button>` : ''}
+        ${sal ? `<button class="sm" onclick="newAdvance('${esc(it.id)}')">${t('newAdv')}</button><button class="sm" onclick="advStatement('${esc(it.id)}')" ${it.id?'':'disabled'}>${t('stmt')}</button>` : ''}
         <button class="sm danger" onclick="delPayRow(${i})" aria-label="${t('del')}">✕</button></div></td>
       <td><select data-f="payFrom">${opt('cash',it.payFrom,t('cash'))}${opt('bank',it.payFrom,t('bank'))}</select></td>
       <td><select data-f="recurrence">${opt('monthly',it.recurrence,t('monthly'))}${opt('manual',it.recurrence,t('manualRec'))}</select></td>
@@ -1180,6 +1195,31 @@ async function payNow(id){
        toast(st(r.status) + ' · ' + r.secs + ' ' + t('secs')); openModal(it.name, `${pill(r.status)} ${esc(r.summary)}`, r.log); }
   catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000, 'err'); }
   finally{ RUNNING = false; }
+}
+async function advStatement(id){
+  if (PAY_DIRTY){ toast(t('payDirty'), 6000); return; }
+  toast(t('loading'), 0);
+  try{
+    const s = await call('api_payrollStatement', TOKEN, id); $('toast').classList.add('hidden');
+    const kinds = { adv:t('stmtAdv'), ded:t('stmtDed'), edit:t('stmtEdit') };
+    let given = 0, paid = 0;
+    s.entries.forEach(e => { if (e.k === 'adv') given += e.a; if (e.k === 'ded') paid -= e.a; });
+    const sum = `<div class="stmt-sum">
+      <div class="stmt-big"><span>${t('stmtBal')}</span><b class="num">${fmt(s.balance)}</b></div>
+      <div><span>${t('stmtGiven')}</span><b class="num">${fmt(given)}</b></div>
+      <div><span>${t('stmtPaid')}</span><b class="num">${fmt(paid)}</b></div></div>`;
+    let body;
+    if (!s.entries.length && !s.opening) body = sum + `<p class="badge">${t('stmtNone')}</p>`;
+    else {
+      const rows = s.entries.slice().reverse().map(e => `<tr><td class="num">${esc(e.d)}</td>
+        <td><span class="pill ${e.k==='adv'?'warn':e.k==='ded'?'ok':''}">${esc(kinds[e.k]||e.k)}</span>${e.n?`<div class="badge" dir="auto">${esc(e.n)}</div>`:''}${e.q?`<div class="badge">QBO ${esc(e.q)}</div>`:''}</td>
+        <td class="num"><bdi dir="ltr" style="font-weight:700;color:${e.a>0?'var(--warn)':'var(--ok)'}">${e.a>0?'+':'−'}${fmt(Math.abs(e.a))}</bdi></td><td class="num"><b>${fmt(e.b)}</b></td></tr>`).join('');
+      const open = s.opening ? `<tr><td>—</td><td><span class="pill">${t('stmtOpen')}</span></td><td></td><td class="num"><b>${fmt(s.opening)}</b></td></tr>` : '';
+      body = sum + `<div class="tablewrap"><table><thead><tr><th>${t('stmtDate')}</th><th>${t('stmtKind')}</th><th>${t('stmtAmt')}</th><th>${t('stmtAfter')}</th></tr></thead><tbody>${rows}${open}</tbody></table></div>` +
+        (s.entries.length >= s.max ? `<p class="badge">${t('stmtMax', s.max)}</p>` : '');
+    }
+    openModal(t('stmtTitle', s.name), '', '', body);
+  }catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000, 'err'); }
 }
 async function newAdvance(id){
   if (PAY_DIRTY){ toast(t('payDirty'), 6000); return; }

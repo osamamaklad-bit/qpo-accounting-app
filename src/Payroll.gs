@@ -31,6 +31,21 @@ function payPosted_() {
 }
 function payDry_() { return String(PropertiesService.getScriptProperties().getProperty(PAY.DRY) || '').trim().toLowerCase() !== 'false'; }
 // تعديل بند واحد تحت قفل (عشان ما يتعارضش مع حفظ من الواجهة في نفس اللحظة)
+/* ---------- كشف حساب السلف: كل سلفة وكل خصم وكل تعديل يدوي للرصيد ----------
+ * متخزن في PAYROLL_ADV_HIST = { id: [ {d, k:'adv'|'ded'|'edit', a: +زيادة/-نقص, b: الرصيد بعدها, q: رقم قيد QBO, n: ملاحظة} ] }
+ * بيتكتب جوه نفس القفل اللي بيغيّر الرصيد، وبيحتفظ بآخر 60 حركة لكل موظف. */
+const PAY_HIST = 'PAYROLL_ADV_HIST', PAY_HIST_MAX = 60;
+function payHist_() {
+  try { return JSON.parse(PropertiesService.getScriptProperties().getProperty(PAY_HIST) || '{}'); } catch (e) { return {}; }
+}
+function payHistAdd_(id, e) {
+  const h = payHist_(), list = h[id] || [];
+  e.d = e.d || Utilities.formatDate(new Date(), APP.TZ, 'yyyy-MM-dd');
+  list.push(e);
+  h[id] = list.slice(-PAY_HIST_MAX);
+  PropertiesService.getScriptProperties().setProperty(PAY_HIST, JSON.stringify(h));
+}
+
 function payUpdateItem_(id, fn) {
   const lock = LockService.getScriptLock(); lock.waitLock(15000);
   try {
@@ -129,7 +144,10 @@ function payPostOne_(it, period, posted) {
   PropertiesService.getScriptProperties().setProperty(PAY.POSTED, JSON.stringify(posted));
   // الخصم اتطبق مرة واحدة: بيتمسح، ورصيد السلفة بيقل
   if (b.kind !== 'none') payUpdateItem_(it.id, function (cur) {
-    if (b.kind === 'advance') cur.advanceBalance = payR2_(Math.max(0, cur.advanceBalance - b.ded));
+    if (b.kind === 'advance') {
+      cur.advanceBalance = payR2_(Math.max(0, cur.advanceBalance - b.ded));
+      payHistAdd_(it.id, { k: 'ded', a: -b.ded, b: cur.advanceBalance, q: posted[key], n: payPeriod_() + (it.deduction.note ? ' - ' + it.deduction.note : '') });
+    }
     cur.deduction = { kind: 'none', amount: 0, note: '' };
   });
   return { id: it.id, name: it.name, qboId: posted[key], net: payR2_(it.amount - b.ded), deduction: b.ded };
@@ -169,6 +187,16 @@ function payrollPreview() {
 
 /* ---------- API للتاب ---------- */
 
+// كشف حساب سلف موظف
+function api_payrollStatement(t, id) {
+  auth_(t);
+  const it = payItems_().filter(function (x) { return x.id === id; })[0];
+  if (!it) throw new Error('الموظف مش موجود / Employee not found');
+  const list = payHist_()[id] || [];
+  const moved = list.reduce(function (s, e) { return s + (Number(e.a) || 0); }, 0);
+  return { name: it.name, balance: it.advanceBalance || 0, opening: payR2_((it.advanceBalance || 0) - moved), entries: list, max: PAY_HIST_MAX };
+}
+
 function api_payroll(t) {
   auth_(t);
   const all = PropertiesService.getScriptProperties().getProperties();
@@ -198,6 +226,13 @@ function api_payrollSave(t, items, rev) {
   const clean = items.map(payClean_).filter(function (x) { return x.name; });
   const ids = {};
   clean.forEach(function (x) { while (ids[x.id]) x.id = Utilities.getUuid().substring(0, 8); ids[x.id] = 1; });
+  // أي تغيير يدوي في رصيد السلفة يتسجل في الكشف (من غير قيد QBO)
+  const old = payItems_().reduce(function (m, x) { m[x.id] = x.advanceBalance || 0; return m; }, {});
+  clean.forEach(function (x) {
+    if (x.type !== 'salary') return;
+    const before = old[x.id] || 0, diff = payR2_((x.advanceBalance || 0) - before);
+    if (diff) payHistAdd_(x.id, { k: 'edit', a: diff, b: x.advanceBalance || 0 });
+  });
   paySaveItems_(clean);
   } finally { lock.releaseLock(); }
   return api_payroll(t);
@@ -232,7 +267,10 @@ function api_payrollAdvance(t, id, amount) {
     if (payDry_()) { out_('', 'DRY advance ' + JSON.stringify(je)); return { dry: true, amount: amount }; }
     if (beforeGoLive_(day)) throw new Error('before GO_LIVE_DATE ' + goLive_());
     const res = qboPost_('journalentry', je);
-    payUpdateItem_(id, function (cur) { cur.advanceBalance = payR2_((cur.advanceBalance || 0) + amount); });
+    payUpdateItem_(id, function (cur) {
+      cur.advanceBalance = payR2_((cur.advanceBalance || 0) + amount);
+      payHistAdd_(id, { d: day, k: 'adv', a: amount, b: cur.advanceBalance, q: String(res.JournalEntry.Id) });
+    });
     return { qboId: res.JournalEntry.Id, amount: amount };
   });
   return { status: r.status, error: r.error, summary: r.summary, log: r.log, secs: r.secs, state: api_payroll(t) };

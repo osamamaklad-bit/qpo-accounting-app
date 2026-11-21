@@ -230,7 +230,7 @@ function doPost(e) {
 const UI_API = ['api_login', 'api_logout', 'api_changePassword', 'api_state', 'api_runAction', 'api_setTrigger',
   'api_deleteTrigger', 'api_logs', 'api_logDetail', 'api_settings', 'api_saveSettings', 'api_qboAccounts',
   'api_testConnections', 'api_importProps', 'api_cleanupProps', 'api_healthCheck',
-  'api_payroll', 'api_payrollSave', 'api_payrollPay', 'api_payrollAdvance'];
+  'api_payroll', 'api_payrollSave', 'api_payrollPay', 'api_payrollAdvance', 'api_payrollStatement'];
 
 function uiApi_(e) {
   let out;
@@ -798,7 +798,7 @@ function api_testConnections(t) {
 // بيتمسح أي مفتاح مش في الإعدادات (المشتركة + إعدادات كل سكريبت) ومش من بيانات الحالة.
 // بيانات الحالة (اللي اترحّل قبل كده، الجلسات، السجل) عمرها ما بتتمسح عشان القيود ما تتكررش.
 const STATE_KEYS = ['PROCESSED', 'GADS_DAYS_PROCESSED', 'GADS_TX_PROCESSED', 'META_CHARGES_PROCESSED',
-  'META_INVOICES_PROCESSED', 'PAYROLL_ITEMS', 'PAYROLL_POSTED', 'PAYROLL_REV', 'ALEX_POSTED'];
+  'META_INVOICES_PROCESSED', 'PAYROLL_ITEMS', 'PAYROLL_POSTED', 'PAYROLL_REV', 'PAYROLL_ADV_HIST', 'ALEX_POSTED'];
 
 function keepProp_(k) {
   if (/^APP_/.test(k)) return true;                                   // كلمة السر والجلسات والسجل والمواعيد
