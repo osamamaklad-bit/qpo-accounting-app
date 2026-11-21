@@ -107,7 +107,17 @@ main{max-width:1240px;margin:auto;padding:22px max(16px,env(safe-area-inset-righ
 .health-h h3{flex:1;font-size:17px;color:var(--navy)}
 .hrow{display:grid;grid-template-columns:auto minmax(110px,160px) minmax(0,1fr);gap:4px 12px;align-items:start;padding:10px 0;border-top:1px solid var(--line)}
 .hrow .nm{font-weight:600}
-.hrow .msg{color:var(--mute);font-size:12.5px;word-break:break-word}
+.hrow .msg{color:var(--mute);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.hrow .msg.okmsg{white-space:normal}
+.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+details.more{flex-basis:100%}
+details.more summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--mute);padding:4px 2px;list-style:none;display:inline-flex;gap:6px;align-items:center}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary::before{content:"▸";transition:transform .15s}
+[dir=rtl] details.more summary::before{content:"◂"}
+details.more[open] summary::before{transform:rotate(90deg)}
+[dir=rtl] details.more[open] summary::before{transform:rotate(-90deg)}
+details.more .acts{border-top:none;padding-top:6px}
 .hrow .fix{grid-column:2 / -1;font-size:12.5px;font-weight:600}
 .hrow .fix.error{color:var(--red)}
 .hrow .fix.warn{color:var(--warn)}
@@ -351,7 +361,7 @@ const I18N = {
     advPrompt:n => `مبلغ السلفة الجديدة لـ ${n} (هيتعمل قيد وهيزود رصيد السلفة):`, delRow:n => `حذف بند ${n}؟ (لازم تحفظ بعدها)`,
     quickAdded:n => `اتضاف ${n} بند. راجعهم واحفظ.`, quickNone:'مفيش سطور مفهومة. اكتب: ايجار/راتب + الاسم + المبلغ.',
     unsavedPay:'عندك تعديلات في الرواتب مش محفوظة. تسيبها؟', savedOk:'اتحفظ',
-    install:'ثبّت التطبيق', otherLang:'English', tagline:'لوحة إدارة القيود والمزامنة', cobrand:'لوحة PetFriend لـ QuickBooks Online',
+    moreTools:'أدوات أكتر', install:'ثبّت التطبيق', otherLang:'English', tagline:'لوحة إدارة القيود والمزامنة', cobrand:'لوحة PetFriend لـ QuickBooks Online',
     writesQb:'الزرار ده بيكتب في QuickBooks', legendPet:'PetFriend', legendQb:'بيكتب في QuickBooks',
     tm:'QuickBooks علامة تجارية مملوكة لـ Intuit Inc. التطبيق ده أداة داخلية لـ PetFriend ومش تابع لـ Intuit.', pw:'كلمة السر', signIn:'دخول', signOut:'خروج',
     tabHome:'الرئيسية', tabLogs:'السجل', tabSettings:'الإعدادات', tabAccount:'الحساب',
@@ -405,7 +415,7 @@ const I18N = {
     advPrompt:n => `New advance amount for ${n} (posts a journal and raises the advance balance):`, delRow:n => `Delete the line for ${n}? (save afterwards)`,
     quickAdded:n => `Added ${n} line${n===1?'':'s'}. Review and save.`, quickNone:'No lines understood. Write: rent/salary + name + amount.',
     unsavedPay:'You have unsaved payroll edits. Leave anyway?', savedOk:'Saved',
-    install:'Install app', otherLang:'عربي', tagline:'Journals & sync control panel', cobrand:'PetFriend for QuickBooks Online',
+    moreTools:'More tools', install:'Install app', otherLang:'عربي', tagline:'Journals & sync control panel', cobrand:'PetFriend for QuickBooks Online',
     writesQb:'This button writes to QuickBooks', legendPet:'PetFriend', legendQb:'Writes to QuickBooks',
     tm:'QuickBooks is a trademark of Intuit Inc. This is an internal PetFriend tool and is not affiliated with Intuit.', pw:'Password', signIn:'Sign in', signOut:'Sign out',
     tabHome:'Overview', tabLogs:'Run log', tabSettings:'Settings', tabAccount:'Account',
@@ -484,6 +494,69 @@ function st(s){ return ['ok','warn','error','running','stopped'].includes(s) ? t
 function src(s){ return ['manual','schedule','webhook'].includes(s) ? t(s) : s; }
 function pill(s){ return `<span class="pill ${esc(s)}">${esc(st(s))}</span>`; }
 
+// يحوّل الملخص (اللي غالباً JSON) لجملة مفهومة. لو مش عارف يقرأه بيرجّعه زي ما هو.
+function human(s){
+  s = String(s == null ? '' : s).replace(/^.*?\b(INFO|WARNING|SEVERE): /, '').trim();
+  const en = LANG === 'en', n = x => fmt(x);
+  const posted = s.match(/^Posted (\d+)$/);
+  if (posted) return en ? `${posted[1]} posted` : `اترحّل ${posted[1]}`;
+  if (s.charAt(0) !== '{') return s;
+  let o; try{ o = JSON.parse(s); }catch(e){
+    // الملخص بيتقص عند 300 حرف، فبنعد من النص نفسه
+    if (/"results":\[/.test(s)){
+      const k = re => (s.match(re) || []).length, dry = k(/"dry":true/g), err = k(/"error":/g), ok = k(/"qboId":/g);
+      const p = [];
+      if (ok) p.push(en ? `${ok}+ posted` : `اترحّل ${ok}+`);
+      if (dry) p.push(en ? `${dry}+ ready (dry run)` : `${dry}+ جاهز (تجربة)`);
+      if (err) p.push(en ? `${err}+ with a problem` : `${err}+ فيهم مشكلة`);
+      return p.join(' · ') + (en ? ' — open for details' : ' — افتح للتفاصيل');
+    }
+    return s;
+  }
+  if (o.error && o.error.message) return o.error.message;
+  if (Array.isArray(o.results)){
+    const c = {dry:0, posted:0, err:0, skip:0};
+    o.results.forEach(r => r.error ? c.err++ : r.skipped ? c.skip++ : r.dry ? c.dry++ : c.posted++);
+    if (!o.results.length) return en ? 'Nothing new to post.' : 'مفيش حاجة جديدة تترحّل.';
+    const p = [];
+    if (c.posted) p.push(en ? `${c.posted} posted` : `اترحّل ${c.posted}`);
+    if (c.dry) p.push(en ? `${c.dry} ready (dry run, nothing posted)` : `${c.dry} جاهز (تجربة، مفيش ترحيل)`);
+    if (c.skip) p.push(en ? `${c.skip} skipped` : `${c.skip} اتخطّى`);
+    if (c.err) p.push(en ? `${c.err} with a problem (see log)` : `${c.err} فيهم مشكلة (شوف السجل)`);
+    return p.join(' · ');
+  }
+  if (o.totals){
+    const t2 = o.totals;
+    return en ? `Total ${n(t2.net)} net · rent ${n(t2.rent)} · salaries ${n(t2.salaries)}` + (t2.deductions ? ` · deductions ${n(t2.deductions)}` : '') + ` · ${o.lines} lines`
+              : `الصافي ${n(t2.net)} · إيجارات ${n(t2.rent)} · رواتب ${n(t2.salaries)}` + (t2.deductions ? ` · خصومات ${n(t2.deductions)}` : '') + ` · ${o.lines} بند`;
+  }
+  if ('totalProcessed' in o){
+    return (o.dryRun ? (en ? 'Dry run: ' : 'تجربة: ') : '') + (en
+      ? `${o.created} new · ${o.updated} updated · ${o.noChanges} unchanged · ${o.failed} problems` + (o.timedOut ? ' · stopped early, press again' : '')
+      : `${o.created} جديد · ${o.updated} اتحدّث · ${o.noChanges} من غير تغيير · ${o.failed} مشكلة` + (o.timedOut ? ' · وقف قبل ما يخلص، دوس تاني' : ''));
+  }
+  if (Array.isArray(o.processed)){
+    return en ? `${o.processed.length} transfers billed` + (o.failed && o.failed.length ? ` · ${o.failed.length} failed` : '')
+              : `اتعمل ${o.processed.length} Bill` + (o.failed && o.failed.length ? ` · ${o.failed.length} فشل` : '');
+  }
+  if (o.beforeGoLive) return en ? `Before go-live (${o.beforeGoLive}): received transfers marked, no bills.` : `قبل تاريخ البدء (${o.beforeGoLive}): التحويلات اتعلّمت من غير Bills.`;
+  if (o.qboId) return (en ? 'Posted to QuickBooks #' : 'اترحّل في QuickBooks رقم ') + o.qboId;
+  if (o.dry) return en ? 'Dry run: nothing posted.' : 'تجربة: مفيش ترحيل.';
+  if (o.ok === true) return en ? 'Done.' : 'تم.';
+  return s;
+}
+// اسم الزرار بدل اسم الدالة (dailyRun ← "تشغيل الآن")
+function actionLabel(jobId, fn){
+  fn = String(fn || ''); const base = fn.split(':')[0];
+  const j = STATE && STATE.jobs.find(x => x.id === jobId);
+  const a = j && j.actions.find(x => x.fn === base);
+  if (a) return pick(a, 'label');
+  const extra = { payrollPay: LANG === 'en' ? 'Pay' : 'دفع', payrollAdvance: LANG === 'en' ? 'Advance' : 'سلفة', handleBostaWebhook_: 'Webhook',
+    dailySync: LANG === 'en' ? 'Daily run' : 'تشغيل يومي', kashierPayoutDaily: LANG === 'en' ? 'Daily run' : 'تشغيل يومي' }[base];
+  return extra ? extra + (fn.includes(':') ? ' · ' + fn.split(':').slice(1).join(':') : '') : fn;
+}
+function cleanLog(s){ return String(s || '').replace(/^.*?\b(INFO|WARNING|SEVERE): /gm, ''); }
+
 // جوه Apps Script بنستخدم google.script.run، وبرة (GitHub Pages) بنكلم رابط /exec مباشرة
 const API_URL = 'https://script.google.com/macros/s/AKfycby5qiOh4iZ902dce7d7sPaKOmZy3pH92fCqL6mDwAfnPtIIC3ZjRDUlFCVsMhALMTUv/exec?src=ui';
 const IN_GAS = !!(window.google && google.script && google.script.run);
@@ -545,7 +618,7 @@ function renderHome(){
 
   if (bad.length){
     h += `<div class="alert"><h3>${esc(t('alertTitle', bad.length))}</h3>`;
-    bad.forEach(j => h += `<div class="item" tabindex="0" onclick="jobLogs('${j.id}')" onkeydown="if(event.key==='Enter')jobLogs('${j.id}')">${pill(j.last.status)} <b>${esc(pick(j,'name'))}</b><span class="badge">${esc(j.last.time)}</span><div class="s" dir="auto">${esc(j.last.summary)}</div></div>`);
+    bad.forEach(j => h += `<div class="item" tabindex="0" onclick="jobLogs('${j.id}')" onkeydown="if(event.key==='Enter')jobLogs('${j.id}')">${pill(j.last.status)} <b>${esc(pick(j,'name'))}</b><span class="badge">${esc(j.last.time)}</span><div class="s" dir="auto">${esc(human(j.last.summary))}</div></div>`);
     h += `<div class="badge">${t('alertHint')}</div></div>`;
   }
 
@@ -558,7 +631,7 @@ function renderHome(){
       h += `<article class="card"><div class="card-h"><h3>${esc(pick(j,'name'))}</h3>${j.dry?`<span class="drytag">${t('dry')}</span>`:''}</div>`;
       h += `<div class="desc">${esc(pick(j,'desc'))}</div>`;
       h += `<div class="last"><span class="k">${t('lastRun')}</span>` + (L
-        ? `<div class="meta">${pill(L.status)}<span>${esc(L.time)}</span><span>· ${esc(src(L.source))}</span><span class="mono">· ${esc(L.action)}</span></div><div class="s" dir="auto">${esc(L.summary)}</div>`
+        ? `<div class="meta">${pill(L.status)}<span>${esc(L.time)}</span><span>· ${esc(src(L.source))}</span><span>· ${esc(actionLabel(j.id, L.action))}</span></div><div class="s" dir="auto">${esc(human(L.summary))}</div>`
         : `<div class="meta"><span class="pill none">${t('none')}</span></div>`) + `</div>`;
       if (j.triggers.length){
         h += `<div class="sched"><span class="k">${t('schedules')}</span>`;
@@ -571,9 +644,13 @@ function renderHome(){
       }
       if (j.queue) h += `<div class="badge">${t('oldQueue', j.queue)}</div>`;
       h += `<div class="acts">`;
-      j.actions.forEach((a, ai) => h += `<button class="sm ${ai===0?'pri':''} ${a.post && !j.dry?'qbpost':''}" title="${a.post && !j.dry ? esc(t('writesQb')) : ''}" ${RUNNING?'disabled':''} onclick="runAct(${ji},${ai})">${esc(pick(a,'label'))}</button>`);
+      const btn = (a, ai) => `<button class="sm ${ai===0?'pri':''} ${a.post && !j.dry?'qbpost':''}" title="${a.post && !j.dry ? esc(t('writesQb')) : ''}" ${RUNNING?'disabled':''} onclick="runAct(${ji},${ai})">${esc(pick(a,'label'))}</button>`;
+      const main = j.actions.map((a, ai) => [a, ai]).filter(([a, ai]) => ai === 0 || a.post);
+      const more = j.actions.map((a, ai) => [a, ai]).filter(([a, ai]) => !(ai === 0 || a.post));
+      main.forEach(([a, ai]) => h += btn(a, ai));
       if (j.dryKey) h += `<button class="sm" onclick="toggleDry(${ji})">${j.dry?t('dryOff'):t('dryOn')}</button>`;
-      h += `<button class="sm ghost" onclick="jobLogs('${j.id}')">${t('log')}</button></div>`;
+      const moreHtml = more.length ? `<details class="more"><summary>${t('moreTools')} (${more.length})</summary><div class="acts">${more.map(([a, ai]) => btn(a, ai)).join('')}</div></details>` : '';
+      h += `<button class="sm ghost" onclick="jobLogs('${j.id}')">${t('log')}</button>${moreHtml}</div>`;
       if (j.webhook !== null){
         h += `<div><span class="k">${t('hookTitle')}</span>` + (j.webhook
           ? `<div class="hook"><input class="mono" readonly value="${esc(j.webhook)}"><button class="sm" onclick="copyText(${ji})">${t('copy')}</button></div>`
@@ -602,7 +679,8 @@ function healthHtml(){
   const lab = {ok:t('hOk'), warn:t('hWarn'), error:t('hErr')};
   H.checks.forEach(c => {
     h += `<div class="hrow"><span class="pill ${esc(c.status)}">${esc(lab[c.status]||c.status)}</span><span class="nm">${esc(pick(c,'name'))}</span>` +
-      `<span class="msg mono" dir="auto">${esc(c.msg)}</span>` + (pick(c,'fix') ? `<span class="fix ${esc(c.status)}">${esc(pick(c,'fix'))}</span>` : '') + `</div>`;
+      (pick(c,'fix') ? `<span class="fix ${esc(c.status)}" style="grid-column:auto">${esc(pick(c,'fix'))}</span><span class="msg mono" dir="auto" title="${esc(c.msg)}" style="grid-column:2 / -1">${esc(c.msg)}</span>`
+                     : `<span class="msg mono okmsg" dir="auto">${esc(c.msg)}</span>`) + `</div>`;
   });
   return h + `</div>`;
 }
@@ -639,7 +717,7 @@ async function runAct(ji, ai){
   try{
     const r = await call('api_runAction', TOKEN, j.id, a.fn);
     toast(st(r.status) + ' · ' + r.secs + ' ' + t('secs'));
-    openModal(label, `${pill(r.status)} ${esc(r.summary)}`, r.log);
+    openModal(label, `${pill(r.status)} ${esc(human(r.summary))}`, r.log);
   }catch(e){
     if (errMsg(e) !== 'AUTH') toast(Date.now() - t0 > 300000 ? t('tooLong') : errMsg(e), 12000);
   }finally{
@@ -685,18 +763,18 @@ function renderLogRows(){
   const names = {}; (STATE ? STATE.jobs : []).forEach(j => names[j.id] = pick(j,'name'));
   if (!rowsAll.length){ $('logsBody').innerHTML = `<div class="card">${t('noRuns')}</div>`; return; }
   const rows = rowsAll.filter(r => (!st || r.status === st) &&
-    (!q || [r.time, names[r.job]||r.job, r.action, r.summary].join(' ').toLowerCase().includes(q)));
+    (!q || [r.time, names[r.job]||r.job, r.action, r.summary, human(r.summary)].join(' ').toLowerCase().includes(q)));
   if (!rows.length){ $('logsBody').innerHTML = `<div class="card">${t('noMatch')}</div>`; return; }
   $('logsBody').innerHTML = `<div class="badge" style="margin-bottom:8px">${t('shownOf', rows.length, rowsAll.length)}</div><div class="tablewrap"><table><thead><tr><th>${t('hTime')}</th><th>${t('hScript')}</th><th>${t('hSource')}</th><th>${t('hAction')}</th><th>${t('hStatus')}</th><th>${t('hSecs')}</th><th>${t('hSummary')}</th></tr></thead><tbody>` +
-      rows.map(r => `<tr class="click" tabindex="0" onclick="showLog('${esc(r.id)}')" onkeydown="if(event.key==='Enter')showLog('${esc(r.id)}')"><td class="num">${esc(r.time)}</td><td>${esc(names[r.job]||r.job)}</td><td>${esc(src(r.source))}</td><td class="mono">${esc(r.action)}</td><td>${pill(r.status)}</td><td class="num">${esc(r.secs)}</td><td style="word-break:break-word" dir="auto">${esc(r.summary)}</td></tr>`).join('') + `</tbody></table></div>`;
+      rows.map(r => `<tr class="click" tabindex="0" onclick="showLog('${esc(r.id)}')" onkeydown="if(event.key==='Enter')showLog('${esc(r.id)}')"><td class="num">${esc(r.time)}</td><td>${esc(names[r.job]||r.job)}</td><td>${esc(src(r.source))}</td><td>${esc(actionLabel(r.job, r.action))}</td><td>${pill(r.status)}</td><td class="num">${esc(r.secs)}</td><td style="word-break:break-word" dir="auto"><div class="clamp">${esc(human(r.summary))}</div></td></tr>`).join('') + `</tbody></table></div>`;
 }
 async function showLog(id){
   try{
     const r = await call('api_logDetail', TOKEN, id);
-    openModal(r.action + ' — ' + r.time, `${pill(r.status)} ${esc(src(r.source))} · ${esc(r.secs)} ${t('secs')} · ${esc(r.summary)}`, r.log);
+    openModal(actionLabel(r.job, r.action) + ' — ' + r.time, `${pill(r.status)} ${esc(src(r.source))} · ${esc(r.secs)} ${t('secs')} · ${esc(human(r.summary))}`, r.log);
   }catch(e){ toast(errMsg(e), 6000); }
 }
-function openModal(title, metaHtml, log){ $('mTitle').textContent=title; $('mMeta').innerHTML=metaHtml; $('mLog').textContent = log || t('noLog'); $('modal').classList.remove('hidden'); }
+function openModal(title, metaHtml, log){ $('mTitle').textContent=title; $('mMeta').innerHTML=metaHtml; $('mLog').textContent = cleanLog(log) || t('noLog'); $('modal').classList.remove('hidden'); }
 function closeModal(){ $('modal').classList.add('hidden'); }
 
 /* ---------- الإعدادات / Settings ---------- */
@@ -875,7 +953,7 @@ function renderPayroll(){
   $('payInfo').innerHTML = esc(t('payInfo', P.period, items.length)) + (P.dry ? ` <span class="drytag">${t('dry')}</span>` : '');
   $('payWarn').innerHTML = P.missing.length ? `<div class="warnbox">${esc(t('payMissing', P.missing.join(', ')))}</div>` : '';
   let tot = {rent:0, salary:0, net:0};
-  let h = `<div class="tablewrap"><table class="paytable"><thead><tr><th>${t('pType')}</th><th>${t('pName')}</th><th>${t('pAmount')}</th><th>${t('pFrom')}</th><th>${t('pRec')}</th><th>${t('pDay')}</th><th>${t('pDed')}</th><th>${t('pAdv')}</th><th>${t('pMonth')}</th><th></th></tr></thead><tbody>`;
+  let h = `<div class="tablewrap"><table class="paytable"><thead><tr><th>${t('pType')}</th><th>${t('pName')}</th><th>${t('pAmount')}</th><th>${t('pMonth')}</th><th></th><th>${t('pFrom')}</th><th>${t('pRec')}</th><th>${t('pDay')}</th><th>${t('pDed')}</th><th>${t('pAdv')}</th></tr></thead><tbody>`;
   items.forEach((it, i) => {
     const sal = it.type === 'salary', d = it.deduction || {kind:'none', amount:0, note:''};
     let ded = sal && d.kind !== 'none' ? Math.min(d.amount, it.amount) : 0;
@@ -886,20 +964,20 @@ function renderPayroll(){
       <td><select data-f="type">${opt('rent',it.type,t('rent'))}${opt('salary',it.type,t('salary'))}</select></td>
       <td><input data-f="name" value="${esc(it.name)}" style="min-width:150px"></td>
       <td><input data-f="amount" type="number" min="0" step="0.01" value="${esc(it.amount)}"></td>
+      <td>${paid ? `<span class="pill ok">${t('paid')} · QBO ${esc(paid)}</span>` : `<span class="badge">${it.recurrence==='monthly' ? esc(t('dueOn', it.day)) : t('manualOnly')}</span>`}</td>
+      <td><div class="row" style="flex-wrap:nowrap">
+        <button class="sm ${P.dry?'':'qbpost'}" ${paid?'disabled':''} onclick="payNow('${esc(it.id)}')">${t('payNow')}</button>
+        ${sal ? `<button class="sm" onclick="newAdvance('${esc(it.id)}')">${t('newAdv')}</button>` : ''}
+        <button class="sm danger" onclick="delPayRow(${i})" aria-label="${t('del')}">✕</button></div></td>
       <td><select data-f="payFrom">${opt('cash',it.payFrom,t('cash'))}${opt('bank',it.payFrom,t('bank'))}</select></td>
       <td><select data-f="recurrence">${opt('monthly',it.recurrence,t('monthly'))}${opt('manual',it.recurrence,t('manualRec'))}</select></td>
       <td><input data-f="day" type="number" min="1" max="28" value="${esc(it.day)}" style="width:62px" ${it.recurrence==='manual'?'disabled':''}></td>
       <td>${sal ? `<div class="ded"><select data-f="dkind">${opt('none',d.kind,t('dedNone'))}${opt('penalty',d.kind,t('dedPenalty'))}${opt('advance',d.kind,t('dedAdvance'))}</select>
           <input data-f="damount" type="number" min="0" step="0.01" value="${esc(d.amount||0)}" ${d.kind==='none'?'disabled':''}>
           <input data-f="dnote" type="text" placeholder="${t('dedNote')}" value="${esc(d.note||'')}" ${d.kind==='none'?'disabled':''}></div>` : '<span class="badge">—</span>'}</td>
-      <td>${sal ? `<input data-f="adv" type="number" min="0" step="0.01" value="${esc(it.advanceBalance||0)}" title="${esc(t('advHint'))}">` : '—'}</td>
-      <td>${paid ? `<span class="pill ok">${t('paid')} · QBO ${esc(paid)}</span>` : `<span class="badge">${it.recurrence==='monthly' ? esc(t('dueOn', it.day)) : t('manualOnly')}</span>`}</td>
-      <td><div class="row" style="flex-wrap:nowrap">
-        <button class="sm ${P.dry?'':'qbpost'}" ${paid?'disabled':''} onclick="payNow('${esc(it.id)}')">${t('payNow')}</button>
-        ${sal ? `<button class="sm" onclick="newAdvance('${esc(it.id)}')">${t('newAdv')}</button>` : ''}
-        <button class="sm danger" onclick="delPayRow(${i})" aria-label="${t('del')}">✕</button></div></td></tr>`;
+      <td>${sal ? `<input data-f="adv" type="number" min="0" step="0.01" value="${esc(it.advanceBalance||0)}" title="${esc(t('advHint'))}">` : '—'}</td></tr>`;
   });
-  h += `</tbody><tfoot><tr><td colspan="2">${t('total')}</td><td class="num" colspan="4">${t('rent')}: ${fmt(tot.rent)} · ${t('salary')}: ${fmt(tot.salary)}</td><td colspan="4">${t('net')}: ${fmt(tot.net)}</td></tr></tfoot></table></div>`;
+  h += `</tbody><tfoot><tr><td colspan="2">${t('total')}</td><td class="num" colspan="3">${t('rent')}: ${fmt(tot.rent)} · ${t('salary')}: ${fmt(tot.salary)}</td><td colspan="5">${t('net')}: ${fmt(tot.net)}</td></tr></tfoot></table></div>`;
   $('payBody').innerHTML = h;
   setPayDirty(PAY_DIRTY);
 }
