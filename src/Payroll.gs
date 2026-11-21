@@ -182,7 +182,8 @@ function api_payroll(t) {
       .reduce(function (m, k) { m[k.split(':')[1]] = posted[k]; return m; }, {}),
     dry: payDry_(),
     goLive: all.GO_LIVE_DATE || '',
-    missing: need.filter(function (k) { return !all[k]; })
+    missing: need.filter(function (k) { return !all[k]; }),
+    accounts: need.reduce(function (m, k) { m[k] = all[k] || ''; return m; }, {})
   };
 }
 

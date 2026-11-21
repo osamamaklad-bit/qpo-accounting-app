@@ -207,6 +207,12 @@ main > section,#payBody,#logsBody,.tablewrap{min-width:0;max-width:100%}
 .paytable .ded select{width:auto}.paytable .ded input[type=number]{width:80px}.paytable .ded input[type=text]{width:110px}
 .paytable tfoot td{font-weight:700;background:#fbf8f6}
 .paytable tr.dirty td{background:var(--cyan-soft)}
+.jump{display:flex;flex-wrap:wrap;gap:4px;align-items:center;background:var(--surface);border-radius:14px;padding:8px 10px;box-shadow:var(--shadow)}
+.section-h{scroll-margin-top:90px}
+.card.flash{box-shadow:0 0 0 3px var(--cyan),var(--shadow);transition:box-shadow .3s}
+.acc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.acc-grid label{display:grid;gap:4px;font-weight:600;font-size:13px}
+.acc-grid .hint{font-weight:400;font-size:11.5px;color:var(--mute)}
 .warnbox{background:var(--warn-soft);color:var(--warn);border-radius:14px;padding:10px 14px;font-size:13px;font-weight:600}
 
 /* modal + toast */
@@ -275,6 +281,7 @@ pre{background:var(--navy);color:#e9f0ff;padding:14px;border-radius:14px;overflo
         <span id="payInfo" class="badge"></span>
       </div>
       <div id="payWarn"></div>
+      <div id="payAcc"></div>
       <div id="payQuick" class="card hidden">
         <div class="desc" data-i="payQuickDesc"></div>
         <textarea id="payQuickText" style="direction:rtl;text-align:right" placeholder="ايجار ... 2000&#10;راتب ... 5500"></textarea>
@@ -349,7 +356,10 @@ const I18N = {
   ar: {
     healthTitle:'حالة الاتصالات', healthRun:'افحص الآن', healthNever:'لسه متعملش فحص. دوس "افحص الآن" (مش بيرحّل أي حاجة).',
     healthChecking:'جاري الفحص... (حوالي 20 ثانية)', healthAt:x => `آخر فحص: ${x}`, hOk:'شغال', hWarn:'محتاج انتباه', hErr:'مش شغال',
-    tabPayroll:'الرواتب والإيجارات', payPreview:'تجربة الشهر ده',
+    tabPayroll:'الرواتب والإيجارات', jumpTo:'روح لـ:', openPaySettings:'افتح في الإعدادات',
+    payMissingN:n => `ناقص ${n} من حسابات كويك بوكس، فالترحيل مش هيشتغل. حطهم في المربع اللي تحت.`, missingN:n => `ناقص ${n}`,
+    accTitle:'حسابات كويك بوكس للرواتب والإيجارات', accDesc:'رقم (ID) كل حساب في كويك بوكس. لو الربط شغال، دوس "تحميل حسابات QBO" واختار بالاسم.',
+    accSave:'حفظ الحسابات', accRent:'مصروف الإيجار', accSalary:'مصروف الرواتب', accCash:'الصندوق', accBank:'البنك', accPenalty:'الجزاءات', accAdvance:'سلف الموظفين', payPreview:'تجربة الشهر ده',
     advHint:'رصيد السلفة. تقدر تكتب الرصيد الافتتاحي هنا. السلف الجديدة من زرار "سلفة" عشان يتعمل لها قيد.', payAdd:'إضافة بند', payQuickBtn:'إضافة كذا بند مرة واحدة', payQuickAdd:'أضف البنود',
     payQuickDesc:'سطر لكل بند: "ايجار" أو "راتب" وبعده الاسم وبعده المبلغ. مثلاً: راتب أحمد علي 3000. هتتضاف بالدفع من الصندوق وشهري يوم 1، وتقدر تعدّلها بعد كده. متنساش تحفظ.',
     paySave:'حفظ البنود', pType:'النوع', pName:'الاسم', pAmount:'المبلغ', pFrom:'الدفع من', pRec:'التكرار', pDay:'يوم', pDed:'خصم المرة الجاية (رواتب)',
@@ -403,7 +413,10 @@ const I18N = {
   en: {
     healthTitle:'Connection health', healthRun:'Check now', healthNever:'Not checked yet. Press “Check now” (it posts nothing).',
     healthChecking:'Checking… (about 20 seconds)', healthAt:x => `Last checked: ${x}`, hOk:'Working', hWarn:'Needs attention', hErr:'Not working',
-    tabPayroll:'Payroll & rent', payPreview:'Preview this month',
+    tabPayroll:'Payroll & rent', jumpTo:'Go to:', openPaySettings:'Open in Settings',
+    payMissingN:n => `${n} QuickBooks account${n===1?' is':'s are'} missing, so posting won’t work. Fill them in the box below.`, missingN:n => `${n} missing`,
+    accTitle:'QuickBooks accounts for payroll & rent', accDesc:'The ID of each account in QuickBooks. If the connection works, press “Load QBO accounts” and pick by name.',
+    accSave:'Save accounts', accRent:'Rent expense', accSalary:'Salaries expense', accCash:'Cash box', accBank:'Bank', accPenalty:'Penalties', accAdvance:'Employee advances', payPreview:'Preview this month',
     advHint:'Advance balance. You can enter the opening balance here. Record new advances with the Advance button so a journal is posted.', payAdd:'Add line', payQuickBtn:'Add several lines', payQuickAdd:'Add lines',
     payQuickDesc:'One line each: "rent" or "salary" (or ايجار / راتب), then the name, then the amount. Example: salary Ahmed Ali 3000. They’re added as cash, monthly on day 1; edit them after. Remember to save.',
     paySave:'Save lines', pType:'Type', pName:'Name', pAmount:'Amount', pFrom:'Paid from', pRec:'Repeat', pDay:'Day', pDed:'Next-payment deduction (salaries)',
@@ -780,9 +793,16 @@ function closeModal(){ $('modal').classList.add('hidden'); }
 /* ---------- الإعدادات / Settings ---------- */
 async function loadSettings(){
   $('settingsBody').innerHTML = `<div class="badge">${t('loading')}</div>`;
-  try{ SETTINGS = await call('api_settings', TOKEN); renderSettings(); }
+  try{ SETTINGS = await call('api_settings', TOKEN); renderSettings(); if (PENDING_SEC){ jumpSettings(PENDING_SEC); PENDING_SEC = null; } }
   catch(e){ $('settingsBody').innerHTML = `<div class="err">${esc(errMsg(e))}</div>`; }
 }
+let PENDING_SEC = null;
+function jumpSettings(id){
+  const el = $('sec-' + id); if (!el) return;
+  el.scrollIntoView({behavior:'smooth', block:'start'});
+  const card = el.nextElementSibling; if (card){ card.classList.add('flash'); setTimeout(() => card.classList.remove('flash'), 1600); }
+}
+function goSettings(id){ PENDING_SEC = id; showTab('settings'); }
 function propInput(p){
   const id = 'p-' + p.key, o = `data-k="${esc(p.key)}" data-t="${p.type}" data-o="${esc(p.value)}"`;
   if (p.type==='secret') return `<input id="${id}" ${o} type="password" placeholder="${p.set?t('secretSet'):t('secretUnset')}" autocomplete="new-password">`;
@@ -879,7 +899,8 @@ function propRow(p, canDelete){
 }
 function renderSettings(){
   let h = '';
-  SETTINGS.sections.forEach(s => { h += `<h2 class="section-h">${esc(pick(s,'name'))}</h2><div class="card" style="gap:0">` + s.items.map(p => propRow(p,false)).join('') + `</div>`; });
+  h += `<div class="jump"><span class="badge">${t('jumpTo')}</span>` + SETTINGS.sections.map(s => `<button class="sm ghost" onclick="jumpSettings('${esc(s.id)}')">${esc(pick(s,'name'))}</button>`).join('') + `</div>`;
+  SETTINGS.sections.forEach(s => { h += `<h2 class="section-h" id="sec-${esc(s.id)}">${esc(pick(s,'name'))}</h2><div class="card" style="gap:0">` + s.items.map(p => propRow(p,false)).join('') + `</div>`; });
   h += `<h2 class="section-h">${t('othersProps')}</h2><div class="card" style="gap:0">` + (SETTINGS.others.map(p => propRow(p,true)).join('') || `<div class="badge">${t('noneItems')}</div>`);
   h += `<div class="prop"><input id="newKey" class="mono" placeholder="NEW_KEY"><input id="newVal" placeholder="${t('value')}"><button class="sm" onclick="addProp()">${t('add')}</button></div></div>`;
   h += `<div class="badge">${t('stateNote', SETTINGS.stateCount)}</div>`;
@@ -951,7 +972,8 @@ function opt(v, cur, label){ return `<option value="${v}" ${v===cur?'selected':'
 function renderPayroll(){
   const P = PAYROLL, items = P.items;
   $('payInfo').innerHTML = esc(t('payInfo', P.period, items.length)) + (P.dry ? ` <span class="drytag">${t('dry')}</span>` : '');
-  $('payWarn').innerHTML = P.missing.length ? `<div class="warnbox">${esc(t('payMissing', P.missing.join(', ')))}</div>` : '';
+  $('payWarn').innerHTML = P.missing.length ? `<div class="warnbox row">${esc(t('payMissingN', P.missing.length))}<span class="spacer"></span><button class="sm" onclick="goSettings('payroll')">${t('openPaySettings')}</button></div>` : '';
+  renderPayAccounts();
   let tot = {rent:0, salary:0, net:0};
   let h = `<div class="tablewrap"><table class="paytable"><thead><tr><th>${t('pType')}</th><th>${t('pName')}</th><th>${t('pAmount')}</th><th>${t('pMonth')}</th><th></th><th>${t('pFrom')}</th><th>${t('pRec')}</th><th>${t('pDay')}</th><th>${t('pDed')}</th><th>${t('pAdv')}</th></tr></thead><tbody>`;
   items.forEach((it, i) => {
@@ -980,6 +1002,37 @@ function renderPayroll(){
   h += `</tbody><tfoot><tr><td colspan="2">${t('total')}</td><td class="num" colspan="3">${t('rent')}: ${fmt(tot.rent)} · ${t('salary')}: ${fmt(tot.salary)}</td><td colspan="5">${t('net')}: ${fmt(tot.net)}</td></tr></tfoot></table></div>`;
   $('payBody').innerHTML = h;
   setPayDirty(PAY_DIRTY);
+}
+const PAY_ACC = [['QBO_RENT_EXPENSE_ACCOUNT_ID','accRent'],['QBO_SALARY_EXPENSE_ACCOUNT_ID','accSalary'],['QBO_CASH_ACCOUNT_ID','accCash'],
+  ['QBO_BANK_ACCOUNT_ID','accBank'],['QBO_PENALTIES_ACCOUNT_ID','accPenalty'],['QBO_ADVANCES_ACCOUNT_ID','accAdvance']];
+function renderPayAccounts(){
+  const A = PAYROLL.accounts || {};
+  const field = ([k, lab]) => {
+    const v = A[k] || '';
+    let input;
+    if (ACCOUNTS){
+      let opts = `<option value="">—</option>`, found = !v;
+      ACCOUNTS.forEach(a => { const s = a.id === v; if (s) found = true; opts += `<option value="${esc(a.id)}" ${s?'selected':''}>${esc(a.name)} (${esc(a.id)})</option>`; });
+      if (!found) opts += `<option value="${esc(v)}" selected>${t('notInQbo')}${esc(v)}</option>`;
+      input = `<select data-acc="${k}" data-o="${esc(v)}">${opts}</select>`;
+    } else input = `<input class="mono" data-acc="${k}" data-o="${esc(v)}" value="${esc(v)}" placeholder="ID">`;
+    return `<label>${t(lab)}<span class="hint">${esc(helpFor(k))}</span>${input}</label>`;
+  };
+  $('payAcc').innerHTML = `<details class="card" ${PAYROLL.missing.length ? 'open' : ''}><summary style="cursor:pointer;font-family:var(--f-display);font-weight:700;color:var(--navy)">${t('accTitle')} ${PAYROLL.missing.length ? `<span class="pill warn">${t('missingN', PAYROLL.missing.length)}</span>` : `<span class="pill ok">${t('ok')}</span>`}</summary>
+    <div class="desc" style="margin:8px 0">${t('accDesc')}</div><div class="acc-grid">${PAY_ACC.map(field).join('')}</div>
+    <div class="row" style="margin-top:12px"><button class="pri" onclick="savePayAccounts()">${t('accSave')}</button><button onclick="loadAccountsFor('pay')">${t('loadAccounts')}</button></div></details>`;
+}
+async function savePayAccounts(){
+  const ch = {};
+  document.querySelectorAll('#payAcc [data-acc]').forEach(el => { const v = el.value.trim(); if (v !== el.dataset.o) ch[el.dataset.acc] = v; });
+  if (!Object.keys(ch).length){ toast(t('noChanges')); return; }
+  try{ await call('api_saveSettings', TOKEN, ch); toast(t('savedOk')); const keep = PAYROLL.items; await loadPayroll(); }
+  catch(e){ toast(errMsg(e), 8000); }
+}
+async function loadAccountsFor(where){
+  toast(t('loadingAcc'), 0);
+  try{ ACCOUNTS = await call('api_qboAccounts', TOKEN); toast(t('accountsN', ACCOUNTS.length)); if (where === 'pay' && PAYROLL) renderPayAccounts(); if (SETTINGS) renderSettings(); }
+  catch(e){ toast(errMsg(e), 8000); }
 }
 function setPayDirty(on){ PAY_DIRTY = on; $('paySaveBtn').innerHTML = esc(t('paySave')) + (on ? '<span class="count">•</span>' : ''); }
 function collectPayroll(){

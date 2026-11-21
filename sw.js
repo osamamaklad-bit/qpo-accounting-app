@@ -3,7 +3,7 @@
  * الأيقونات والمانيفست: من الكاش
  * طلبات السكريبت (script.google.com) مش بتتلمس خالص: مفيش بيانات بتتخزن
  */
-const CACHE = 'pf-qbo-v9';
+const CACHE = 'pf-qbo-v10';
 const SHELL = ['./', './index.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png', './icons/logo-512.png', './icons/favicon-32.png'];
 
