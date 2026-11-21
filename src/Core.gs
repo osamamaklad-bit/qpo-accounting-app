@@ -735,7 +735,7 @@ function api_healthCheck(t) {
     const di = H.indexOf('date');
     let newest = '';
     vals.slice(1).forEach(function (r) {
-      const d = r[di] instanceof Date ? Utilities.formatDate(r[di], APP.TZ, 'yyyy-MM-dd') : String(r[di]).substring(0, 10);
+      const d = gadsDay_(r[di], String(r[di]), APP.TZ);   // نفس قراية التاريخ اللي سكريبت جوجل أدز بيستخدمها
       if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d > newest) newest = d;
     });
     notes.push('GADS_TX ✓ (' + (newest || '?') + ')');
