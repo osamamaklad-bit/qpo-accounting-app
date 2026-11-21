@@ -753,7 +753,8 @@ function api_healthCheck(t) {
     const payMissing = (typeof PAY_ACCOUNT_KEYS !== 'undefined' && JSON.parse(all.PAYROLL_ITEMS || '[]').length)
       ? PAY_ACCOUNT_KEYS.filter(function (k) { return !all[k]; }) : [];
     if (payMissing.length) return { status: 'warn', msg: msg + ' · payroll accounts missing: ' + payMissing.length,
-      fix: 'حط حسابات الرواتب والإيجارات في الإعدادات: ' + payMissing.join(', '), fix_en: 'Set the payroll & rent accounts in Settings: ' + payMissing.join(', ') };
+      fix: 'ناقص ' + payMissing.length + ' من حسابات الرواتب والإيجارات: حطهم من تاب الرواتب ← "حسابات كويك بوكس".',
+      fix_en: payMissing.length + ' payroll & rent accounts missing: fill them in the Payroll tab → “QuickBooks accounts”.' };
     if (!trig) return { status: 'warn', msg: msg, fix: 'مفيش ولا موعد شغال: فعّل المواعيد من الرئيسية لما الاتصالات تبقى تمام.', fix_en: 'No schedules are on: turn them on from the overview once the connections are OK.' };
     return { msg: msg };
   }));
