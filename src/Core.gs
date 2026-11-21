@@ -727,7 +727,8 @@ function api_healthCheck(t) {
   out.push(hcFix_(hc_('sheets', 'شيتات جوجل', 'Google Sheets', function () {
     const notes = [];
     const po = SpreadsheetApp.openById(req_('SPREAD_SHEET_ID'));
-    if (!po.getSheetByName('PO')) return { status: 'error', msg: 'SPREAD_SHEET_ID: tab "PO" missing' };
+    if (!po.getSheetByName('PO')) notes.push('"' + po.getName() + '": PO tab will be created on the first run');
+    else notes.push('PO ✓');
     const g = SpreadsheetApp.openById(req_('SPREAD_SHEET_ID2')).getSheetByName('GADS_TX');
     if (!g) return { status: 'error', msg: 'SPREAD_SHEET_ID2: tab "GADS_TX" missing' };
     const vals = g.getDataRange().getValues(), H = vals[0].map(function (h) { return String(h).trim().toLowerCase(); });
@@ -737,7 +738,7 @@ function api_healthCheck(t) {
       const d = r[di] instanceof Date ? Utilities.formatDate(r[di], APP.TZ, 'yyyy-MM-dd') : String(r[di]).substring(0, 10);
       if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d > newest) newest = d;
     });
-    notes.push('PO ✓', 'GADS_TX ✓ (' + (newest || '?') + ')');
+    notes.push('GADS_TX ✓ (' + (newest || '?') + ')');
     const stale = newest && newest < Utilities.formatDate(new Date(Date.now() - 3 * 864e5), APP.TZ, 'yyyy-MM-dd');
     return stale ? { status: 'warn', msg: notes.join(' · '),
       fix: 'تاب GADS_TX آخر بيانات فيه ' + newest + '. اتأكد إن اللي بيملاه لسه شغال.', fix_en: 'The newest row in GADS_TX is ' + newest + '. Check that whatever fills it is still running.' }

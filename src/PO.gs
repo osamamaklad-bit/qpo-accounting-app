@@ -79,11 +79,8 @@ function processTransfer_(props, token, id, ref, supplierName) {
     props.getProperty('SPREAD_SHEET_ID')
   );
 
-  const sh = ss.getSheetByName('PO');
-
-  if (!sh) {
-    throw new Error('Sheet "PO" was not found.');
-  }
+  // تاب PO بيتكتب فيه أصناف آخر تحويل اتستلم. لو مش موجود بيتعمل لوحده.
+  const sh = ss.getSheetByName('PO') || ss.insertSheet('PO');
 
   sh.clearContents();
 
