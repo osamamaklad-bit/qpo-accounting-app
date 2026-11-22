@@ -270,7 +270,7 @@ function api_payrollAdvance(t, id, amount) {
   const r = runLogged_('payroll', 'manual', 'payrollAdvance:' + it.name, function () {
     const A = payAccounts_(), from = it.payFrom === 'bank' ? A.bank : A.cash;
     const day = Utilities.formatDate(new Date(), APP.TZ, 'yyyy-MM-dd');
-    const je = { DocNumber: ('ADV' + day.replace(/-/g, '') + '-' + it.id).substring(0, 21), TxnDate: day,
+    const je = { DocNumber: ('A' + Utilities.formatDate(new Date(), APP.TZ, 'yyMMddHHmm') + '-' + it.id).substring(0, 21), TxnDate: day,
       PrivateNote: 'PetFriend advance ' + it.id + ' | سلفة ' + it.name,
       Line: [payLine_('Debit', req_('QBO_ADVANCES_ACCOUNT_ID'), amount, 'سلفة ' + it.name),
              payLine_('Credit', from, amount, 'سلفة ' + it.name + (it.payFrom === 'bank' ? ' (بنك)' : ' (صندوق)'))] };

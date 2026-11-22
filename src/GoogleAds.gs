@@ -25,13 +25,7 @@ function googleAdsDailyRun() {
         metaLine_('Credit', amt, p.getProperty('QBO_GADS_CLEARING_ACCOUNT_ID'), desc)
       ]
     };
-    const q = UrlFetchApp.fetch(
-      'https://quickbooks.api.intuit.com/v3/company/' + p.getProperty('QBO_REALM_ID') + '/journalentry?minorversion=70', {
-      method: 'post', contentType: 'application/json',
-      headers: {Authorization: 'Bearer ' + getQboToken_(p), Accept: 'application/json'},
-      payload: JSON.stringify(je), muteHttpExceptions: true
-    });
-    if (q.getResponseCode() >= 300) throw new Error(q.getContentText());
+    qboPost_('journalentry', je);   // بيتأكد الأول إن رقم المستند مش موجود في QBO
     done.push(day);
     p.setProperty('GADS_DAYS_PROCESSED', fitJson_(done.slice(-60)));
     Logger.log(' -> POSTED ' + day + ' ' + amt);
@@ -125,11 +119,7 @@ function gadsSync50(dryRun) {
     const desc = 'Google Ads ' + e.kind + ' ' + e.day;
     const je = {DocNumber: doc, TxnDate: e.day, PrivateNote: desc,
                 Line: [metaLine_('Debit', e.amt, dr, desc), metaLine_('Credit', e.amt, cr, desc)]};
-    const q = UrlFetchApp.fetch('https://quickbooks.api.intuit.com/v3/company/' + p.getProperty('QBO_REALM_ID') + '/journalentry?minorversion=70', {
-      method: 'post', contentType: 'application/json',
-      headers: {Authorization: 'Bearer ' + getQboToken_(p), Accept: 'application/json'},
-      payload: JSON.stringify(je), muteHttpExceptions: true});
-    if (q.getResponseCode() >= 300) throw new Error(q.getContentText());
+    qboPost_('journalentry', je);   // بيتأكد الأول إن رقم المستند مش موجود في QBO
     if (e.kind === 'EXP') { doneDays.push(e.key); p.setProperty('GADS_DAYS_PROCESSED', fitJson_(doneDays.slice(-400))); }
     else { doneTx.push(e.key); p.setProperty('GADS_TX_PROCESSED', fitJson_(doneTx.slice(-400))); }
     n++;

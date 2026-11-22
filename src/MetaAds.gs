@@ -27,13 +27,7 @@ function metaChargesLast50(dryRun) {
         metaLine_('Credit', amt, p.getProperty('QBO_META_PAYMENT_ACCOUNT_ID'),  desc)
       ]
     };
-    const q = UrlFetchApp.fetch(
-      'https://quickbooks.api.intuit.com/v3/company/' + p.getProperty('QBO_REALM_ID') + '/journalentry?minorversion=70', {
-      method: 'post', contentType: 'application/json',
-      headers: {Authorization: 'Bearer ' + getQboToken_(p), Accept: 'application/json'},
-      payload: JSON.stringify(je), muteHttpExceptions: true
-    });
-    if (q.getResponseCode() >= 300) throw new Error(q.getContentText());
+    qboPost_('journalentry', je);   // بيتأكد الأول إن رقم المستند مش موجود في QBO
     done.push(t.id);
     p.setProperty('META_CHARGES_PROCESSED', fitJson_(done.slice(-300)));
   });
@@ -88,13 +82,7 @@ function metaInvoices(dryRun) {
         metaLine_('Credit', amt, p.getProperty('QBO_META_PAYMENT_ACCOUNT_ID'),  desc)
       ]
     };
-    const q = UrlFetchApp.fetch(
-      'https://quickbooks.api.intuit.com/v3/company/' + p.getProperty('QBO_REALM_ID') + '/journalentry?minorversion=70', {
-      method: 'post', contentType: 'application/json',
-      headers: {Authorization: 'Bearer ' + getQboToken_(p), Accept: 'application/json'},
-      payload: JSON.stringify(je), muteHttpExceptions: true
-    });
-    if (q.getResponseCode() >= 300) throw new Error(q.getContentText());
+    qboPost_('journalentry', je);   // بيتأكد الأول إن رقم المستند مش موجود في QBO
     done.push(inv.id);
     p.setProperty('META_INVOICES_PROCESSED', fitJson_(done.slice(-300)));
   });

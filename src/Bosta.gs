@@ -270,7 +270,51 @@ function refreshQboToken_(cache) {
   return t.access_token;
 }
 
+/* ---------- حماية من التكرار من جوه كويك بوكس نفسه ----------
+ * قبل أي ترحيل فيه DocNumber: بندوّر عليه في QBO.
+ *  - موجود بنفس المبلغ  ← مش بيترحّل تاني، وبيرجع القيد الموجود كأنه اترحّل (فالعلامة تتسجّل).
+ *  - موجود بمبلغ مختلف ← خطأ ومفيش ترحيل، لحد ما حد يراجعه.
+ * ده بيحمي لو علامة "اترحّل قبل كده" ضاعت، أو المشروع القديم رحّل نفس الحركة. */
+const QBO_ENTITY_NAME = { journalentry: 'JournalEntry', bill: 'Bill', purchase: 'Purchase', deposit: 'Deposit', salesreceipt: 'SalesReceipt' };
+
+function qboFindByDoc_(entity, doc) {
+  const name = QBO_ENTITY_NAME[entity];
+  if (!name || !doc) return [];
+  const q = 'select * from ' + name + " where DocNumber = '" + String(doc).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+  const r = UrlFetchApp.fetch('https://quickbooks.api.intuit.com/v3/company/' + req_('QBO_REALM_ID') + '/query?minorversion=70&query=' + encodeURIComponent(q), {
+    headers: { Authorization: 'Bearer ' + getQboToken_(), Accept: 'application/json' }, muteHttpExceptions: true
+  });
+  if (r.getResponseCode() >= 300) throw new Error('QBO duplicate check ' + r.getResponseCode() + ': ' + r.getContentText().substring(0, 300));
+  return ((JSON.parse(r.getContentText()).QueryResponse || {})[name]) || [];
+}
+
+function qboPayloadTotal_(entity, p) {
+  const lines = (p && p.Line) || [];
+  const sum = lines.reduce(function (s, l) {
+    if (entity === 'journalentry') return s + (l.JournalEntryLineDetail && l.JournalEntryLineDetail.PostingType === 'Debit' ? Number(l.Amount) || 0 : 0);
+    return s + (l.DetailType === 'SubTotalLineDetail' ? 0 : Number(l.Amount) || 0);
+  }, 0);
+  return Math.round(sum * 100) / 100;
+}
+
+function qboGuardDup_(entity, payload) {
+  const doc = payload && payload.DocNumber;
+  if (!doc) return null;
+  const found = qboFindByDoc_(entity, doc);
+  if (!found.length) return null;
+  const tot = qboPayloadTotal_(entity, payload);
+  const same = found.filter(function (x) { return Math.abs((Number(x.TotalAmt) || 0) - tot) < 0.01; })[0];
+  if (same) {
+    out_('WARN', 'WARN: ' + doc + ' موجود بالفعل في QBO (Id ' + same.Id + ', ' + same.TxnDate + ') بنفس المبلغ ' + tot + ': مش هيترحّل تاني، واتسجّل إنه اترحّل.');
+    return same;
+  }
+  throw new Error('رقم المستند ' + doc + ' موجود في QBO بمبلغ مختلف (Id ' + found.map(function (x) { return x.Id + ' = ' + x.TotalAmt; }).join('، ') +
+    '، والجديد ' + tot + '). مش هيترحّل لحد ما تراجعه. / DocNumber already in QBO with a different amount.');
+}
+
 function qboPost_(entity, payload) {
+  const ex = qboGuardDup_(entity, payload);
+  if (ex) { const o = {}; o[QBO_ENTITY_NAME[entity]] = ex; o.duplicate = true; return o; }
   const r = UrlFetchApp.fetch('https://quickbooks.api.intuit.com/v3/company/' + req_('QBO_REALM_ID') + '/' + entity + '?minorversion=70', {
     method: 'post',
     contentType: 'application/json',
