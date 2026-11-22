@@ -3,6 +3,9 @@
 <head>
 <base target="_top">
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://osamamaklad-bit.github.io; connect-src https://script.google.com https://script.googleusercontent.com; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<script>/* منع فتح الصفحة جوه iframe في موقع تاني (clickjacking) */ if (window.top !== window.self) { try { window.top.location = window.self.location; } catch (e) { document.documentElement.style.display = 'none'; } }</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PetFriend • QBO</title>
 <link rel="icon" href="https://osamamaklad-bit.github.io/qpo-accounting-app/icons/favicon-32.png">
@@ -399,6 +402,10 @@ pre{background:#17181b;color:#eef0f3;padding:14px;border-radius:14px;overflow:au
         <div class="row"><button class="pri" onclick="changePw()" data-i="save"></button></div>
         <div class="desc" data-i="pwNote"></div>
       </div>
+      <div class="card" style="max-width:460px;margin-top:16px">
+        <h3 data-i="secTitle"></h3>
+        <div id="secInfo" class="desc"></div>
+      </div>
     </section>
   </main>
   <footer data-i="tm"></footer>
@@ -484,8 +491,8 @@ const I18N = {
     impTitle:'استيراد الإعدادات من المشاريع القديمة', impDesc:'الصق ناتج exportAllProps (JSON) أو رابط ملف Drive اللي طلع منه.', impOver:'استبدال القيم الموجودة', impBtn:'استيراد',
     impConfirmOver:'استيراد مع استبدال القيم الموجودة؟', impConfirm:'استيراد (القيم الموجودة هتفضل زي ما هي)؟',
     impAdded:n => `تمت إضافة ${n}`, impReplaced:' · اتستبدل: ', impSkipped:'متخطّى لأنه موجود بقيمة مختلفة: ',
-    pwTitle:'تغيير كلمة السر', pwOld:'كلمة السر الحالية', pwNew:'كلمة السر الجديدة (8 حروف على الأقل)', pwNew2:'تأكيد كلمة السر الجديدة', save:'حفظ',
-    pwNote:'بعد التغيير هيتعمل خروج من كل الأجهزة.', pwMismatch:'التأكيد مش مطابق', pwDone:'تم تغيير كلمة السر، ادخل بالجديدة'
+    pwTitle:'تغيير كلمة السر', pwOld:'كلمة السر الحالية', pwNew:'كلمة السر الجديدة (12 حرف على الأقل)', pwNew2:'تأكيد كلمة السر الجديدة', save:'حفظ',
+    pwNote:'12 حرف على الأقل. بعد التغيير هيتعمل خروج من كل الأجهزة.', secTitle:'الأمان', secLastOk:'آخر دخول ناجح', secFails:'محاولات دخول غلط (آخر 24 ساعة)', secHooks:'طلبات ويب هوك مرفوضة (آخر 24 ساعة)', secIdle:'لو سبت التطبيق 30 دقيقة من غير استخدام، هيعمل خروج لوحده.', secWarn:'فيه محاولات دخول غلط. لو مش انت، غيّر كلمة السر.', pwLen:'كلمة السر لازم تكون 12 حرف على الأقل', idleOut:'اتعمل خروج تلقائي بعد 30 دقيقة من غير استخدام.', pwMismatch:'التأكيد مش مطابق', pwDone:'تم تغيير كلمة السر، ادخل بالجديدة'
   },
   en: {
     healthTitle:'Connection health', healthRun:'Check now', healthNever:'Not checked yet. Press “Check now” (it posts nothing).',
@@ -546,8 +553,8 @@ const I18N = {
     impTitle:'Import settings from old projects', impDesc:'Paste the exportAllProps output (JSON) or the link to the Drive file it created.', impOver:'Replace existing values', impBtn:'Import',
     impConfirmOver:'Import and replace existing values?', impConfirm:'Import (existing values stay as they are)?',
     impAdded:n => `Added ${n}`, impReplaced:' · Replaced: ', impSkipped:'Skipped (already set to a different value): ',
-    pwTitle:'Change password', pwOld:'Current password', pwNew:'New password (at least 8 characters)', pwNew2:'Confirm new password', save:'Save',
-    pwNote:'Changing it signs out every device.', pwMismatch:'The two new passwords don’t match', pwDone:'Password changed. Sign in with the new one.'
+    pwTitle:'Change password', pwOld:'Current password', pwNew:'New password (at least 12 characters)', pwNew2:'Confirm new password', save:'Save',
+    pwNote:'At least 12 characters. Changing it signs out every device.', secTitle:'Security', secLastOk:'Last successful sign-in', secFails:'Failed sign-ins (last 24h)', secHooks:'Rejected webhook calls (last 24h)', secIdle:'After 30 minutes without activity you are signed out automatically.', secWarn:'There were failed sign-ins. If that wasn’t you, change the password.', pwLen:'The password must be at least 12 characters', idleOut:'Signed out after 30 minutes without activity.', pwMismatch:'The two new passwords don’t match', pwDone:'Password changed. Sign in with the new one.'
   }
 };
 function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
@@ -676,7 +683,7 @@ function call(fn, ...args){
 function showLogin(msg){ TOKEN=null; lsSet('qboTok', null); $('app').classList.add('hidden'); $('login').classList.remove('hidden'); $('loginErr').textContent = msg||''; $('pw').focus(); }
 async function doLogin(){
   $('loginErr').textContent=''; $('loginBtn').disabled = true;
-  try{ TOKEN = await call('api_login', $('pw').value); lsSet('qboTok', TOKEN); $('pw').value=''; start(); }
+  try{ TOKEN = await call('api_login', $('pw').value); lsSet('qboTok', TOKEN); IDLE_T = 0; touchActive(); $('pw').value=''; start(); }
   catch(e){ $('loginErr').textContent = errMsg(e); }
   finally{ $('loginBtn').disabled = false; }
 }
@@ -698,7 +705,7 @@ async function showTab(name){
 
 /* ---------- الرئيسية / Overview ---------- */
 async function loadHome(){
-  try{ STATE = await call('api_state', TOKEN); renderHome(); }
+  try{ STATE = await call('api_state', TOKEN); renderHome(); renderSecurity(STATE.security); }
   catch(e){ if(errMsg(e)!=='AUTH') toast(errMsg(e), 6000, 'err'); }
 }
 function hours(sel){ let o=''; for(let h=0;h<24;h++) o+=`<option value="${h}" ${h===sel?'selected':''}>${String(h).padStart(2,'0')}:00</option>`; return o; }
@@ -1315,6 +1322,7 @@ async function newAdvance(id){
 
 /* ---------- الحساب / Account ---------- */
 async function changePw(){
+  if ($('newPw').value.length < 12){ toast(t('pwLen'), 5000, 'err'); return; }
   if ($('newPw').value !== $('newPw2').value){ toast(t('pwMismatch')); return; }
   try{ await call('api_changePassword', TOKEN, $('oldPw').value, $('newPw').value); showLogin(t('pwDone')); }
   catch(e){ toast(errMsg(e), 6000, 'err'); }
@@ -1351,9 +1359,27 @@ async function installApp(){
   INSTALL_PROMPT = null; $('installBtn').classList.add('hidden');
 }
 
+/* خروج تلقائي بعد 30 دقيقة من غير استخدام (حتى لو الجلسة على السيرفر لسه سارية) */
+const IDLE_MS = 30 * 60 * 1000;
+let IDLE_T = 0;
+function touchActive(){ const n = Date.now(); if (n - IDLE_T < 15000) return; IDLE_T = n; lsSet('qboAct', String(n)); }
+['click','keydown','touchstart'].forEach(ev => document.addEventListener(ev, touchActive, {passive:true}));
+setInterval(() => {
+  if (!TOKEN) return;
+  const last = Number(lsGet('qboAct') || 0);
+  if (last && Date.now() - last > IDLE_MS){ const tk = TOKEN; showLogin(t('idleOut')); call('api_logout', tk).catch(() => {}); }
+}, 60000);
+function renderSecurity(sec){
+  if (!sec || !$('secInfo')) return;
+  const row = (k, v, warn) => `<div class="row" style="justify-content:space-between"><span>${t(k)}</span><b class="num" ${warn?'style="color:var(--red)"':''}>${esc(v)}</b></div>`;
+  $('secInfo').innerHTML = row('secLastOk', sec.lastOk || '—') + row('secFails', sec.fails24h, sec.fails24h > 0) + row('secHooks', sec.hooks24h) +
+    (sec.fails24h ? `<div class="warnbox" style="margin-top:8px">${t('secWarn')}</div>` : '') + `<p class="badge" style="margin-top:8px">${t('secIdle')}</p>`;
+}
+
 applyLang();
 TOKEN = lsGet('qboTok');
-if (TOKEN) start(); else showLogin();
+if (TOKEN && Date.now() - Number(lsGet('qboAct') || 0) > IDLE_MS){ lsSet('qboTok', null); TOKEN = null; }
+if (TOKEN){ touchActive(); start(); } else showLogin();
 </script>
 </body>
 </html>

@@ -14,6 +14,7 @@
 
 const APP = {
   TITLE: 'PetFriend • QBO',
+  UI_URL: 'https://osamamaklad-bit.github.io/qpo-accounting-app/',
   FAVICON: 'https://cdn.shopify.com/s/files/1/0690/9218/0245/files/Logo_32_-_32_Pix-01.png',
   WEBAPP_URL: 'https://script.google.com/macros/s/AKfycby5qiOh4iZ902dce7d7sPaKOmZy3pH92fCqL6mDwAfnPtIIC3ZjRDUlFCVsMhALMTUv/exec',   // يُستخدم لو Script Property WEBAPP_URL فاضية
   TZ: 'Africa/Cairo',
@@ -211,16 +212,19 @@ function pqClearQueue() {
 function doGet(e) {
   // اختبار سريع: افتح رابط /exec?ping=1 ← لو ظهر {"ok":true,"ui":true} يبقى النسخة الجديدة متنشرة
   if (e && e.parameter && e.parameter.ping) return uiJson_({ ok: true, ui: true, time: new Date().toISOString() });
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle(APP.TITLE)
-    .setFaviconUrl(APP.FAVICON)
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  // أمان: مفيش HtmlService هنا عن قصد. أي صفحة HtmlService في web app شغال باسم صاحبه ومفتوح للكل
+  // بتسمح لأي زائر يشغّل أي دالة عامة (google.script.run.alexPost() مثلاً) من غير كلمة سر.
+  // الواجهة الوحيدة هي GitHub Pages، وبتكلم uiApi_ اللي كل دوالها بتتحقق من الجلسة.
+  return uiJson_({ ok: true, ui: APP.UI_URL });
 }
 
 function doPost(e) {
   const p = (e && e.parameter) || {};
   if (p.src === 'ui') return uiApi_(e);             // الواجهة على GitHub Pages
   if (p.src === 'pq') return uiJson_({ ok: true, ignored: 'products sync daily or manually' });   // ويب هوك شوبيفاي القديم
+  // ويب هوك بوسطة: التوكن بيتراجع هنا قبل أي تسجيل أو تشغيل، عشان أي طلب مجهول ميملاش السجل ولا يستهلك الحصة
+  const want = PropertiesService.getScriptProperties().getProperty('BOSTA_WEBHOOK_TOKEN') || '';
+  if (!want || !safeEq_(String(p.token || ''), want)) { secNote_('hook'); return uiJson_({ ok: false, error: 'unauthorized' }); }
   const r = runLogged_('bosta', 'webhook', 'handleBostaWebhook_', function () { return handleBostaWebhook_(e); });
   return r.result || uiJson_({ ok: false, error: r.error || r.summary });
 }
@@ -422,6 +426,28 @@ function sessionGen_() {
   return PropertiesService.getScriptProperties().getProperty('APP_SESSION_GEN') || '1';
 }
 
+/* سجل أمان بسيط (APP_SEC): آخر دخول ناجح، ومحاولات الدخول الغلط وطلبات الويب هوك المرفوضة في آخر 24 ساعة */
+function secRead_() {
+  try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('APP_SEC') || '{}'); } catch (e) { return {}; }
+}
+function secNote_(kind) {
+  try {
+    const s = secRead_(), now = Date.now(), day = now - 864e5;
+    if (kind === 'ok') s.lastOk = now;
+    else {
+      const k = kind === 'hook' ? 'hooks' : 'fails';
+      s[k] = (s[k] || []).filter(function (x) { return x > day; }).concat([now]).slice(-50);
+    }
+    PropertiesService.getScriptProperties().setProperty('APP_SEC', JSON.stringify(s));
+  } catch (e) {}
+}
+function secSummary_() {
+  const s = secRead_(), day = Date.now() - 864e5, f = (s.fails || []).filter(function (x) { return x > day; }),
+    h = (s.hooks || []).filter(function (x) { return x > day; });
+  const fmt = function (x) { return x ? nowStr_(new Date(x)) : ''; };
+  return { lastOk: fmt(s.lastOk), fails24h: f.length, lastFail: fmt(f[f.length - 1]), hooks24h: h.length };
+}
+
 function auth_(token) {
   const v = token ? CacheService.getScriptCache().get('APP_S_' + token) : null;
   if (!v || v !== sessionGen_()) throw new Error('AUTH');
@@ -443,9 +469,12 @@ function api_login(pw) {
 
   if (!safeEq_(pwHash_(String(pw || '')), hash)) {
     cache.put('APP_FAILS', String(fails + 1), 900);
+    secNote_('fail');
+    Utilities.sleep(1500);                 // بيبطّأ التخمين
     throw new Error('كلمة السر غير صحيحة');
   }
   cache.remove('APP_FAILS');
+  secNote_('ok');
   const token = Utilities.getUuid() + Utilities.getUuid();
   cache.put('APP_S_' + token, sessionGen_(), APP.SESSION_SEC);
   return token;
@@ -462,7 +491,9 @@ function api_changePassword(t, oldPw, newPw) {
   if (!safeEq_(pwHash_(String(oldPw || '')), P.getProperty('APP_PASSWORD_HASH') || '')) {
     throw new Error('كلمة السر الحالية غير صحيحة');
   }
-  if (String(newPw || '').length < 8) throw new Error('كلمة السر الجديدة لازم تكون 8 حروف على الأقل');
+  newPw = String(newPw || '');
+  if (newPw.length < 12) throw new Error('كلمة السر الجديدة لازم تكون 12 حرف على الأقل / At least 12 characters');
+  if (newPw === String(oldPw || '')) throw new Error('كلمة السر الجديدة لازم تختلف عن القديمة / Must differ from the current one');
   P.setProperty('APP_PASSWORD_HASH', pwHash_(newPw));
   P.setProperty('APP_SESSION_GEN', String(Number(sessionGen_()) + 1));   // يخرج كل الجلسات
   return true;
@@ -529,6 +560,7 @@ function api_state(t) {
   return {
     groups: GROUPS, jobs: jobs, others: others, goLive: all.GO_LIVE_DATE || '',
     health: JSON.parse(all.APP_HEALTH || 'null'),
+    security: secSummary_(),
     logUrl: all.APP_LOG_SHEET_ID ? 'https://docs.google.com/spreadsheets/d/' + all.APP_LOG_SHEET_ID : ''
   };
 }
