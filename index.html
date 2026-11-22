@@ -307,6 +307,7 @@ pre{background:#17181b;color:#eef0f3;padding:14px;border-radius:14px;overflow:au
       <nav>
         <button data-tab="home" onclick="showTab('home')" data-i="tabHome"></button>
         <button data-tab="payroll" onclick="showTab('payroll')" data-i="tabPayroll"></button>
+        <button data-tab="alex" onclick="showTab('alex')" data-i="tabAlex"></button>
         <button data-tab="logs" onclick="showTab('logs')" data-i="tabLogs"></button>
         <button data-tab="settings" onclick="showTab('settings')" data-i="tabSettings"></button>
         <button data-tab="account" onclick="showTab('account')" data-i="tabAccount"></button>
@@ -339,6 +340,17 @@ pre{background:#17181b;color:#eef0f3;padding:14px;border-radius:14px;overflow:au
         <div class="row"><button class="pri" onclick="quickAddPayroll()" data-i="payQuickAdd"></button></div>
       </div>
       <div id="payBody"></div>
+    </section>
+
+    <section id="tab-alex" class="hidden" style="display:grid;gap:16px">
+      <div class="toolbar">
+        <button id="alexPostBtn" class="pri" onclick="alexPostUi()" data-i="alexPost"></button>
+        <button onclick="alexPreviewUi()" data-i="alexPreview"></button>
+        <button class="ghost sm" onclick="loadAlex()" data-i="refresh"></button>
+        <a id="alexSheet" class="badge hidden" target="_blank" rel="noopener" data-i="alexOpenSheet"></a>
+        <span id="alexInfo" class="badge"></span>
+      </div>
+      <div id="alexBody" style="display:grid;gap:16px;min-width:0"></div>
     </section>
 
     <section id="tab-logs" class="hidden" style="display:grid;gap:16px">
@@ -416,7 +428,12 @@ const I18N = {
   ar: {
     healthTitle:'حالة الاتصالات', healthRun:'افحص الآن', healthNever:'لسه متعملش فحص. دوس "افحص الآن" (مش بيرحّل أي حاجة).',
     healthChecking:'جاري الفحص... (حوالي 20 ثانية)', healthAt:x => `آخر فحص: ${x}`, hOk:'شغال', hWarn:'محتاج انتباه', hErr:'مش شغال',
-    tabPayroll:'الرواتب والإيجارات', jumpTo:'روح لـ:', openPaySettings:'افتح في الإعدادات',
+    tabPayroll:'الرواتب والإيجارات', tabAlex:'صندوق إسكندرية', alexPost:'رحّل الدفعة للصندوق', alexPreview:'تجربة الدفعة', alexOpenSheet:'فتح الشيت ↗',
+    alexNet:'المقدم من المندوب للصندوق', alexTotal:'إجمالي التحصيل', alexShip:'شحن المندوب', alexCount:'عدد الأوردرات', alexCum:'إجمالي اللي دخل الصندوق',
+    alexBatch:'الدفعة الحالية في الشيت', alexHist:'الدفعات اللي اترحّلت', alexHistNone:'لسه مفيش دفعات اترحّلت.', alexPosted:id => `الدفعة دي اترحّلت قبل كده (QBO ${id}). امسح أوردراتها من الشيت وحط الدفعة الجديدة.`,
+    alexMissing:k => `ناقص في الإعدادات: ${k}`, alexReady:'جاهزة للترحيل', alexNotReady:'مش هتترحّل لحد ما المشاكل دي تتصلح:',
+    alexOrder:'الأوردر', alexAddr:'العنوان', alexService:'الخدمة', alexValue:'القيمة', alexDate:'التاريخ', alexConfirm:(n,net) => `هيترحّل قيد في كويك بوكس: ${n} أوردر، ويدخل الصندوق ${net}.\n\nمتأكد؟`,
+    alexConfirmDry:n => `وضع التجربة شغال: هيعرض القيد بس من غير ما يترحّل (${n} أوردر).`, alexHistMax:n => `بيظهر آخر ${n} دفعة.`, alexTitle:'دفعة مندوب إسكندرية', jumpTo:'روح لـ:', openPaySettings:'افتح في الإعدادات',
     payMissingN:n => `ناقص ${n} من حسابات كويك بوكس، فالترحيل مش هيشتغل. حطهم في المربع اللي تحت.`, missingN:n => `ناقص ${n}`,
     accTitle:'حسابات كويك بوكس للرواتب والإيجارات', accDesc:'رقم (ID) كل حساب في كويك بوكس. لو الربط شغال، دوس "تحميل حسابات QBO" واختار بالاسم.',
     accSave:'حفظ الحسابات', accRent:'مصروف الإيجار', accSalary:'مصروف الرواتب', accCash:'الصندوق', accBank:'البنك', accPenalty:'الجزاءات', accAdvance:'سلف الموظفين', payPreview:'تجربة الشهر ده',
@@ -473,7 +490,12 @@ const I18N = {
   en: {
     healthTitle:'Connection health', healthRun:'Check now', healthNever:'Not checked yet. Press “Check now” (it posts nothing).',
     healthChecking:'Checking… (about 20 seconds)', healthAt:x => `Last checked: ${x}`, hOk:'Working', hWarn:'Needs attention', hErr:'Not working',
-    tabPayroll:'Payroll & rent', jumpTo:'Go to:', openPaySettings:'Open in Settings',
+    tabPayroll:'Payroll & rent', tabAlex:'Alex cash box', alexPost:'Post batch to cash box', alexPreview:'Preview batch', alexOpenSheet:'Open sheet ↗',
+    alexNet:'Prepaid by rider to cash box', alexTotal:'Total collected', alexShip:'Rider shipping', alexCount:'Orders', alexCum:'Total into cash box',
+    alexBatch:'Current batch in the sheet', alexHist:'Posted batches', alexHistNone:'No batches posted yet.', alexPosted:id => `This batch was already posted (QBO ${id}). Clear its orders from the sheet and add the next batch.`,
+    alexMissing:k => `Missing in Settings: ${k}`, alexReady:'Ready to post', alexNotReady:'Won’t post until these are fixed:',
+    alexOrder:'Order', alexAddr:'Address', alexService:'Service', alexValue:'Value', alexDate:'Date', alexConfirm:(n,net) => `This posts a journal to QuickBooks: ${n} orders, ${net} into the cash box.\n\nContinue?`,
+    alexConfirmDry:n => `Dry run is on: shows the journal without posting (${n} orders).`, alexHistMax:n => `Shows the last ${n} batches.`, alexTitle:'Alexandria rider batch', jumpTo:'Go to:', openPaySettings:'Open in Settings',
     payMissingN:n => `${n} QuickBooks account${n===1?' is':'s are'} missing, so posting won’t work. Fill them in the box below.`, missingN:n => `${n} missing`,
     accTitle:'QuickBooks accounts for payroll & rent', accDesc:'The ID of each account in QuickBooks. If the connection works, press “Load QBO accounts” and pick by name.',
     accSave:'Save accounts', accRent:'Rent expense', accSalary:'Salaries expense', accCash:'Cash box', accBank:'Bank', accPenalty:'Penalties', accAdvance:'Employee advances', payPreview:'Preview this month',
@@ -666,8 +688,9 @@ async function showTab(name){
   if (leaving && SETTINGS){ const n = Object.keys(pendingChanges()).length; if (n && !await ask(t('unsavedLeave', n), {kind:'warn', title:t('dlgUnsaved'), ok:t('dlgLeave')})) return; }
   if (!$('tab-payroll').classList.contains('hidden') && name !== 'payroll' && PAY_DIRTY && !await ask(t('unsavedPay'), {kind:'warn', title:t('dlgUnsaved'), ok:t('dlgLeave')})) return;
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab===name));
-  ['home','payroll','logs','settings','account'].forEach(n => $('tab-'+n).classList.toggle('hidden', n!==name));
+  ['home','payroll','alex','logs','settings','account'].forEach(n => $('tab-'+n).classList.toggle('hidden', n!==name));
   if(name==='payroll') loadPayroll();
+  if(name==='alex') loadAlex();
   if(name==='home') loadHome();
   if(name==='logs') loadLogs();
   if(name==='settings') loadSettings();
@@ -1196,6 +1219,62 @@ async function payNow(id){
   catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000, 'err'); }
   finally{ RUNNING = false; }
 }
+/* ---------- صندوق إسكندرية / Alex cash box ---------- */
+let ALEX = null;
+async function loadAlex(){
+  $('alexBody').innerHTML = `<div class="badge">${t('loading')}</div>`;
+  try{ ALEX = await call('api_alexBox', TOKEN); renderAlex(); }
+  catch(e){ $('alexBody').innerHTML = `<div class="err">${esc(errMsg(e))}</div>`; }
+}
+function renderAlex(){
+  const A = ALEX, b = A.batch;
+  const sh = $('alexSheet');
+  if (A.sheetId){ sh.href = 'https://docs.google.com/spreadsheets/d/' + encodeURIComponent(A.sheetId) + '/edit'; sh.classList.remove('hidden'); } else sh.classList.add('hidden');
+  $('alexInfo').innerHTML = (A.dry ? `<span class="drytag">${t('dry')}</span> ` : '') + esc(A.tab);
+  const ready = b && !b.postedId && !b.problems.length && !A.missing.length;
+  const btn = $('alexPostBtn'); btn.disabled = !ready; btn.classList.toggle('qbpost', !A.dry);
+  let h = '';
+  if (A.missing.length) h += `<div class="warnbox">${esc(t('alexMissing', A.missing.join('، ')))} <button class="sm" onclick="goSettings('alex')">${t('openPaySettings')}</button></div>`;
+  if (A.batchError) h += `<div class="card"><div class="err">${esc(A.batchError)}</div></div>`;
+  if (b){
+    h += `<div class="card" style="display:grid;gap:12px"><div class="card-h"><h3>${t('alexBatch')}</h3>${b.postedId ? `<span class="pill">QBO ${esc(b.postedId)}</span>` : b.problems.length ? `<span class="pill error">!</span>` : A.missing.length ? `<span class="pill warn">!</span>` : `<span class="pill ok">${t('alexReady')}</span>`}</div>`;
+    if (b.postedId) h += `<div class="warnbox">${esc(t('alexPosted', b.postedId))}</div>`;
+    else if (b.problems.length) h += `<div class="warnbox">${t('alexNotReady')}<ul style="margin:6px 0 0;padding-inline-start:18px">${b.problems.map(p => `<li dir="auto">${esc(p)}</li>`).join('')}</ul></div>`;
+    h += `<div class="stmt-sum">
+      <div class="stmt-big"><span>${t('alexNet')}</span><b class="num">${fmt(b.net)}</b></div>
+      <div><span>${t('alexTotal')}</span><b class="num">${fmt(b.total)}</b></div>
+      <div><span>${t('alexShip')}</span><b class="num">${fmt(b.shipping)}</b></div></div>
+      <div class="badge">${t('alexCount')}: <b>${b.orders.length}</b></div>
+      <div class="tablewrap"><table><thead><tr><th>${t('alexOrder')}</th><th>${t('alexValue')}</th><th>${t('alexService')}</th><th>${t('alexAddr')}</th></tr></thead><tbody>` +
+      b.orders.map(o => `<tr><td class="num"><b>${esc(o.order)}</b></td><td class="num">${fmt(o.value)}</td><td dir="auto">${esc(o.service)}</td><td dir="auto" style="min-width:180px">${esc(o.address)}</td></tr>`).join('') +
+      `</tbody></table></div></div>`;
+  }
+  const H = A.hist;
+  h += `<div class="card" style="display:grid;gap:12px"><div class="card-h"><h3>${t('alexHist')}</h3>${H.length ? `<span class="badge">${t('alexCum')}: <b class="num">${fmt(H[0].cum)}</b></span>` : ''}</div>`;
+  if (!H.length) h += `<div class="badge">${t('alexHistNone')}</div>`;
+  else h += `<div class="tablewrap"><table><thead><tr><th>${t('alexDate')}</th><th>${t('alexCount')}</th><th>${t('alexTotal')}</th><th>${t('alexShip')}</th><th>${t('alexNet')}</th><th>${t('alexCum')}</th><th>QBO</th></tr></thead><tbody>` +
+    H.map(x => `<tr><td class="num">${esc(x.d)}</td><td class="num" title="${esc(x.o||'')}">${esc(x.n)}</td><td class="num">${fmt(x.total)}</td><td class="num">${fmt(x.ship)}</td><td class="num"><b>${fmt(x.net)}</b></td><td class="num">${fmt(x.cum)}</td><td class="num">${esc(x.q)}</td></tr>`).join('') +
+    `</tbody></table></div>` + (H.length >= A.histMax ? `<div class="badge">${t('alexHistMax', A.histMax)}</div>` : '');
+  $('alexBody').innerHTML = h + '</div>';
+}
+async function alexRun(fn, title){
+  if (RUNNING){ toast(t('busy')); return; }
+  RUNNING = true; toast(t('runningToast', title), 0);
+  try{
+    const r = await call('api_runAction', TOKEN, 'alex', fn);
+    toast(st(r.status) + ' · ' + r.secs + ' ' + t('secs'), 3500, r.status === 'error' ? 'err' : 'ok');
+    openModal(t('alexTitle') + ' — ' + title, `${pill(r.status)} ${esc(human(r.summary))}`, r.error ? (r.error + '\n\n' + (r.log||'')) : r.log);
+  }catch(e){ if (errMsg(e) !== 'AUTH') toast(errMsg(e), 8000, 'err'); }
+  finally{ RUNNING = false; loadAlex(); }
+}
+function alexPreviewUi(){ alexRun('alexPreview', t('alexPreview')); }
+async function alexPostUi(){
+  const b = ALEX && ALEX.batch; if (!b) return;
+  const ok = ALEX.dry ? await ask(t('alexConfirmDry', b.orders.length), {title:t('alexPost')})
+                      : await ask(t('alexConfirm', b.orders.length, fmt(b.net)), {kind:'qbo', title:t('dlgPost'), ok:t('dlgPostOk')});
+  if (ok) alexRun('alexPost', t('alexPost'));
+}
+
 async function advStatement(id){
   if (PAY_DIRTY){ toast(t('payDirty'), 6000); return; }
   toast(t('loading'), 0);

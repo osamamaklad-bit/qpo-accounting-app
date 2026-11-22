@@ -14,7 +14,22 @@
  * الأمان: ALEX_DRY_RUN (أي قيمة غير false = تجربة)، GO_LIVE_DATE، ونفس الدفعة مينفعش تترحّل مرتين (ALEX_POSTED).
  *********************************************************/
 
-const ALEX = { POSTED: 'ALEX_POSTED', DRY: 'ALEX_DRY_RUN' };
+const ALEX = { POSTED: 'ALEX_POSTED', DRY: 'ALEX_DRY_RUN', HIST: 'ALEX_HIST', HIST_MAX: 30 };
+
+// سجل الصندوق: كل دفعة اترحّلت {d, key, n, total, ship, net, cum (إجمالي اللي دخل الصندوق لحد الدفعة دي), q, o (أرقام الأوردرات)}
+function alexHist_() {
+  try { return JSON.parse(PropertiesService.getScriptProperties().getProperty(ALEX.HIST) || '[]'); } catch (e) { return []; }
+}
+// أوردرات اترحّلت في دفعات قبل كده (عشان نفس الأوردر ميتحسبش مرتين)
+function alexDupOrders_(b) {
+  const seen = {};
+  alexHist_().forEach(function (h) { String(h.o || '').split(' ').forEach(function (o) { if (o) seen[o] = h.d; }); });
+  return b.orders.filter(function (o) { return seen[o.order]; }).map(function (o) { return o.order + ' (' + seen[o.order] + ')'; });
+}
+function alexProblems_(b, c) {
+  const dup = alexDupOrders_(b);
+  return dup.length ? c.problems.concat(['أوردرات اترحّلت في دفعة قبل كده: ' + dup.join('، ')]) : c.problems;
+}
 
 function alexDry_() { return String(PropertiesService.getScriptProperties().getProperty(ALEX.DRY) || '').trim().toLowerCase() !== 'false'; }
 function alexNum_(v) {
@@ -94,8 +109,9 @@ function alexPreview() {
   b.orders.forEach(function (o) { out_('', o.order + ' | ' + o.value + ' | ' + o.service + ' | ' + o.address.substring(0, 40)); });
   out_('', 'إجمالي ' + c.total + ' - شحن ' + c.ship + ' = صافي للصندوق ' + c.net);
   if (posted[key]) out_('WARN', 'الدفعة دي اترحّلت قبل كده (QBO ' + posted[key] + ')');
-  c.problems.forEach(function (p) { out_('WARN', p); });
-  return { ok: !c.problems.length, orders: b.orders.length, total: c.total, shipping: c.ship, net: c.net, alreadyPosted: !!posted[key] };
+  const probs = posted[key] ? c.problems : alexProblems_(b, c);
+  probs.forEach(function (p) { out_('WARN', p); });
+  return { ok: !probs.length, orders: b.orders.length, total: c.total, shipping: c.ship, net: c.net, alreadyPosted: !!posted[key] };
 }
 
 function alexPost() {
@@ -103,12 +119,34 @@ function alexPost() {
   const b = alexReadBatch_(), c = alexCheck_(b), key = alexKey_(b);
   const posted = JSON.parse(P.getProperty(ALEX.POSTED) || '{}');
   if (posted[key]) throw new Error('الدفعة دي اترحّلت قبل كده (QBO ' + posted[key] + '). امسح الأوردرات من التاب وحط الدفعة الجديدة.');
-  if (c.problems.length) throw new Error('مش هيترحّل لحد ما تتصلح: ' + c.problems.join(' · '));
+  const probs = alexProblems_(b, c);
+  if (probs.length) throw new Error('مش هيترحّل لحد ما تتصلح: ' + probs.join(' · '));
   const je = alexBuildJournal_(b, c, key);
   if (alexDry_()) { out_('', 'DRY ' + JSON.stringify(je)); return { dry: true, orders: b.orders.length, net: c.net, shipping: c.ship }; }
   if (beforeGoLive_(todayCairo_())) throw new Error('قبل تاريخ البدء ' + goLive_());
   const res = qboPost_('journalentry', je);
   posted[key] = String(res.JournalEntry.Id);
   P.setProperty(ALEX.POSTED, JSON.stringify(posted));
+  const hist = alexHist_(), prev = hist.length ? Number(hist[hist.length - 1].cum) || 0 : 0;
+  hist.push({ d: je.TxnDate, key: key, n: b.orders.length, total: c.total, ship: c.ship, net: c.net,
+    cum: Math.round((prev + c.net) * 100) / 100, q: posted[key], o: b.orders.map(function (o) { return o.order; }).join(' ') });
+  P.setProperty(ALEX.HIST, JSON.stringify(hist.slice(-ALEX.HIST_MAX)));
   return { qboId: res.JournalEntry.Id, orders: b.orders.length, net: c.net, shipping: c.ship };
+}
+
+/* ---------- تاب "صندوق إسكندرية" في الواجهة ---------- */
+function api_alexBox(t) {
+  auth_(t);
+  const all = PropertiesService.getScriptProperties().getProperties();
+  const out = {
+    dry: alexDry_(), goLive: all.GO_LIVE_DATE || '', sheetId: all.ALEX_SHEET_ID || '', tab: (all.ALEX_TAB || 'Alex orders').trim(),
+    missing: ['ALEX_SHEET_ID', 'QBO_CASH_ACCOUNT_ID', 'QBO_UNDEPOSITED_FUNDS_ACCOUNT_ID', 'QBO_ALEX_SHIPPING_ACCOUNT_ID'].filter(function (k) { return !all[k]; }),
+    hist: alexHist_().reverse(), histMax: ALEX.HIST_MAX
+  };
+  try {
+    const b = alexReadBatch_(), c = alexCheck_(b), key = alexKey_(b), posted = JSON.parse(all[ALEX.POSTED] || '{}');
+    out.batch = { key: key, orders: b.orders, total: c.total, shipping: c.ship, net: c.net, postedId: posted[key] || '',
+      problems: posted[key] ? c.problems : alexProblems_(b, c) };
+  } catch (e) { out.batchError = e.message; }
+  return out;
 }
