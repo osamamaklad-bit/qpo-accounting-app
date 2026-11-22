@@ -34,7 +34,7 @@
 ## ملاحظات
 
 - QBO بيستخدم `QBO_CLIENT_ID` / `QBO_CLIENT_SECRET` / `QBO_REFRESH_TOKEN` / `QBO_REALM_ID` لكل الملفات (توكن واحد مشترك). الاستيراد بيحوّل `CLIENT_ID_QBO` القديمة تلقائياً.
-- Meta: الموعد اليومي بيرحّل الـ Charges بس؛ الفواتير يدوي عشان ما يتكررش نفس المبلغ.
+- Meta: فيسبوك قفل `transactions`، فبقى الموعد اليومي بيرحّل **مصروف كل يوم** من Insights بعد ما اليوم يخلص (مدين `QBO_META_EXPENSE_ACCOUNT_ID` / دائن `QBO_META_CLEARING_ACCOUNT_ID`، رقم المستند `META-yyyy-MM-dd`). الدفع لميتا بكارت البنك بيدخل من الـ bank feed في QBO ويتطابق على ميتا الوسيط. `META_TOKEN` مكانه الإعدادات في التطبيق (Script Properties)، مش GitHub secrets.
 - حسابات المخزون في PO بقت إعدادات: `QBO_INVENTORY_ASSET_ACCOUNT_ID` (افتراضي 121) و `QBO_INVENTORY_OFFSET_ACCOUNT_ID` (افتراضي 315).
 - مفيش أي أسرار في الكود؛ كلها في Script Properties.
 - `GO_LIVE_DATE` (إعدادات مشتركة، مثلاً `2027-01-01`): أي حركة قبله مش بتترحّل في أي سكريبت. قبل التاريخ ده، أوامر الشراء بتعلّم التحويلات المستلمة إنها اتعالجت من غير ما تعمل Bill، فخلي موعدها شغال في ديسمبر.

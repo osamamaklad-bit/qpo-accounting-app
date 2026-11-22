@@ -89,3 +89,68 @@ function metaInvoices(dryRun) {
 }
 
 function metaInvoicesDry() { metaInvoices(true); }
+
+/* ============================================================
+ * مصروف ميتا اليومي (بديل الـ Charges بعد ما فيسبوك قفل transactions)
+ *
+ * بيقرا مصروف كل يوم من Insights ويرحّل قيد واحد لكل يوم بعد ما اليوم يخلص:
+ *   مدين  QBO_META_EXPENSE_ACCOUNT_ID   (مصروف إعلانات ميتا)
+ *   دائن  QBO_META_CLEARING_ACCOUNT_ID  (ميتا وسيط = المستحق لميتا)
+ * الدفع لميتا (كارت البنك) بيدخل من الـ bank feed في QBO ويتطابق على حساب ميتا الوسيط.
+ * الأمان: META_DAYS_PROCESSED + فحص رقم المستند META-yyyy-MM-dd في QBO + GO_LIVE_DATE.
+ * ============================================================ */
+function metaSpendSync(dryRun) {
+  const t0 = Date.now(), p = PropertiesService.getScriptProperties();
+  const acc = req_('META_AD_ACCOUNT_ID'), tok = req_('META_TOKEN');
+  const tz = 'Africa/Cairo', today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  const f = function (d) { return Utilities.formatDate(d, tz, 'yyyy-MM-dd'); };
+  const since = f(new Date(Date.now() - 35 * 864e5)), until = f(new Date(Date.now() - 864e5));
+  const exp = dryRun ? p.getProperty('QBO_META_EXPENSE_ACCOUNT_ID') : req_('QBO_META_EXPENSE_ACCOUNT_ID');
+  const clr = dryRun ? p.getProperty('QBO_META_CLEARING_ACCOUNT_ID') : req_('QBO_META_CLEARING_ACCOUNT_ID');
+  if (dryRun && !exp) out_('WARN', 'WARN: QBO_META_EXPENSE_ACCOUNT_ID لسه مش متحدد (حساب مصروف إعلانات ميتا). لازم قبل الترحيل.');
+
+  // كل الأيام من Insights (مع الصفحات)
+  let url = 'https://graph.facebook.com/v21.0/act_' + acc + '/insights?level=account&time_increment=1&limit=100' +
+    '&fields=' + encodeURIComponent('spend,account_currency,date_start') +
+    '&time_range=' + encodeURIComponent(JSON.stringify({ since: since, until: until })) +
+    '&access_token=' + encodeURIComponent(tok);
+  const rows = [];
+  for (let page = 0; url && page < 10; page++) {
+    const r = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    const body = r.getContentText();
+    let res; try { res = JSON.parse(body); } catch (e) { res = {}; }
+    if (r.getResponseCode() >= 300 || !res.data) {
+      throw new Error('Meta Insights HTTP ' + r.getResponseCode() + ': ' + body.split(tok).join('***').substring(0, 400));
+    }
+    res.data.forEach(function (x) { rows.push(x); });
+    url = res.paging && res.paging.next;
+  }
+  rows.sort(function (a, b) { return a.date_start < b.date_start ? -1 : 1; });
+
+  const done = JSON.parse(p.getProperty('META_DAYS_PROCESSED') || '[]');
+  const sum = { days: rows.length, posted: 0, pending: 0, done: 0, beforeGoLive: 0, total: 0, currency: '' };
+  for (let i = 0; i < rows.length; i++) {
+    if (Date.now() - t0 > 270000) { out_('WARN', 'WARN: وقف قبل حد الوقت، شغّله تاني يكمّل.'); break; }
+    const day = rows[i].date_start, amt = Math.round(Number(rows[i].spend || 0) * 100) / 100;
+    sum.currency = rows[i].account_currency || sum.currency;
+    if (!amt || day >= today) continue;
+    let state;
+    if (done.indexOf(day) > -1) { state = 'DONE'; sum.done++; }
+    else if (beforeGoLive_(day)) { state = 'before GO_LIVE_DATE'; sum.beforeGoLive++; }
+    else { state = dryRun ? 'NEW' : 'POST'; sum.pending++; sum.total = Math.round((sum.total + amt) * 100) / 100; }
+    out_('', day + ' | ' + amt + ' ' + (rows[i].account_currency || '') + ' | ' + state);
+    if (state !== 'POST') continue;
+
+    const desc = 'Meta Ads spend ' + day;
+    const je = { DocNumber: 'META-' + day, TxnDate: day, PrivateNote: desc + ' | act_' + acc,
+      Line: [metaLine_('Debit', amt, exp, desc), metaLine_('Credit', amt, clr, desc)] };
+    qboPost_('journalentry', je);   // بيتأكد الأول إن رقم المستند مش موجود في QBO
+    done.push(day);
+    p.setProperty('META_DAYS_PROCESSED', fitJson_(done.slice(-120)));
+    sum.posted++;
+  }
+  if (goLive_()) out_('', 'GO_LIVE_DATE ' + goLive_() + ': الأيام قبله مش بتترحّل');
+  return sum;
+}
+function metaSpendDry()  { return metaSpendSync(true); }
+function metaSpendPost() { return metaSpendSync(false); }

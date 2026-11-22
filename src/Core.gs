@@ -63,17 +63,15 @@ const JOBS = [
   },
   {
     id: 'meta', group: 'A', name: 'Meta Ads ← قيود QBO', name_en: 'Meta Ads → QBO journals',
-    desc: 'المجدول يرحّل الـ Charges فقط. الفواتير يدوي عشان ما يتكررش نفس المبلغ مرتين.',
-    desc_en: 'The schedule posts charges only. Invoices are manual so the same amount is never posted twice.',
+    desc: 'مصروف كل يوم من ميتا (بعد ما اليوم يخلص): مدين مصروف إعلانات ميتا / دائن ميتا الوسيط. الدفع بكارت البنك بيدخل من الـ bank feed في QBO ويتطابق على ميتا الوسيط.',
+    desc_en: 'Daily spend from Meta (after the day ends): debit Meta ads expense / credit Meta clearing. Debit-card payments come in through the QBO bank feed and are matched to Meta clearing.',
     actions: [
-      { fn: 'metaChargesDryRun', label: 'تجربة Charges', label_en: 'Dry run charges' },
-      { fn: 'metaChargesPost', label: 'ترحيل Charges', label_en: 'Post charges', post: true },
-      { fn: 'metaInvoicesDry', label: 'تجربة الفواتير', label_en: 'Dry run invoices' },
-      { fn: 'metaInvoicesPost', label: 'ترحيل الفواتير', label_en: 'Post invoices', post: true },
-      { fn: 'metaFindBusiness', label: 'معرفة Business ID', label_en: 'Find Business ID' }
+      { fn: 'metaSpendDry', label: 'تجربة مصروف آخر 35 يوم', label_en: 'Preview last 35 days of spend' },
+      { fn: 'metaSpendPost', label: 'رحّل المصروف', label_en: 'Post spend', post: true },
+      { fn: 'metaFindBusiness', label: 'بيانات الحساب الإعلاني', label_en: 'Ad account details' }
     ],
-    triggers: [{ fn: 'cron_meta', label: 'يومياً (Charges)', label_en: 'Daily (charges)', type: 'daily', hour: 11 }],
-    props: ['META_AD_ACCOUNT_ID', 'META_BUSINESS_ID', 'META_TOKEN', 'QBO_META_CLEARING_ACCOUNT_ID', 'QBO_META_PAYMENT_ACCOUNT_ID']
+    triggers: [{ fn: 'cron_meta', label: 'يومياً (مصروف امبارح)', label_en: 'Daily (yesterday’s spend)', type: 'daily', hour: 11 }],
+    props: ['META_AD_ACCOUNT_ID', 'META_TOKEN', 'QBO_META_EXPENSE_ACCOUNT_ID', 'QBO_META_CLEARING_ACCOUNT_ID', 'META_BUSINESS_ID']
   },
   {
     id: 'bosta', group: 'B', name: 'تحويلات بوسطة ← قيد QBO', name_en: 'Bosta payouts → QBO journal',
@@ -171,7 +169,7 @@ function laterDate_(a, b) { return !b ? a : (a > b ? a : b); }
 // ---------- المواعيد المجدولة (كلها بتسجل في السجل) ----------
 function cron_po()      { cronRun_('po', 'dailyRun'); }
 function cron_gads()    { cronRun_('gads', 'gadsSync50Post'); }
-function cron_meta()    { cronRun_('meta', 'metaChargesPost'); }
+function cron_meta()    { cronRun_('meta', 'metaSpendPost'); }
 function cron_bosta()   { cronRun_('bosta', 'dailySync'); }
 function cron_kashier() { cronRun_('kashier', 'kashierPayoutDaily'); }
 function cron_pqDaily() { cronRun_('products', 'pqSyncAll'); }
@@ -779,10 +777,12 @@ function api_healthCheck(t) {
     const a = hcGet_('https://graph.facebook.com/v21.0/act_' + acc + '?fields=name&access_token=' + encodeURIComponent(tok));
     if (a.code !== 200) return { status: 'error', msg: 'HTTP ' + a.code + ': ' + a.text.replace(tok, '***'),
       fix: 'التوكن مرفوض: حط META_TOKEN جديد.', fix_en: 'The token was rejected: paste a new META_TOKEN.' };
-    const tx = hcGet_('https://graph.facebook.com/v21.0/act_' + acc + '/transactions?limit=1&access_token=' + encodeURIComponent(tok));
-    if (tx.code !== 200) return { status: 'warn', msg: 'Token OK · transactions: HTTP ' + tx.code,
-      fix: 'التوكن شغال، بس ترحيل الـ Charges محتاج يتعدل لأن فيسبوك قفل transactions.', fix_en: 'The token works, but posting charges needs an update: Facebook closed the transactions endpoint.' };
-    return { msg: 'Token OK' };
+    const ins = hcGet_('https://graph.facebook.com/v21.0/act_' + acc + '/insights?date_preset=yesterday&fields=spend&access_token=' + encodeURIComponent(tok));
+    if (ins.code !== 200) return { status: 'error', msg: 'Token OK · insights: HTTP ' + ins.code + ': ' + ins.text.split(tok).join('***').substring(0, 160),
+      fix: 'التوكن مش قادر يقرا المصروف: اعمل توكن جديد لـ System User "QBO integration" بصلاحية ads_read.', fix_en: 'The token can’t read spend: generate a new token for the “QBO integration” system user with ads_read.' };
+    if (!all.QBO_META_EXPENSE_ACCOUNT_ID) return { status: 'warn', msg: 'Token OK · insights ✓ · QBO_META_EXPENSE_ACCOUNT_ID missing',
+      fix: 'حدد حساب مصروف إعلانات ميتا في الإعدادات ← ميتا.', fix_en: 'Set the Meta ads expense account in Settings → Meta.' };
+    return { msg: 'Token OK · insights ✓' };
   }));
 
   out.push(hcFix_(hc_('sheets', 'شيتات جوجل', 'Google Sheets', function () {
@@ -851,7 +851,7 @@ function api_testConnections(t) {
 // بيتمسح أي مفتاح مش في الإعدادات (المشتركة + إعدادات كل سكريبت) ومش من بيانات الحالة.
 // بيانات الحالة (اللي اترحّل قبل كده، الجلسات، السجل) عمرها ما بتتمسح عشان القيود ما تتكررش.
 const STATE_KEYS = ['PROCESSED', 'GADS_DAYS_PROCESSED', 'GADS_TX_PROCESSED', 'META_CHARGES_PROCESSED',
-  'META_INVOICES_PROCESSED', 'PAYROLL_ITEMS', 'PAYROLL_POSTED', 'PAYROLL_REV', 'PAYROLL_ADV_HIST', 'ALEX_POSTED', 'ALEX_HIST'];
+  'META_INVOICES_PROCESSED', 'META_DAYS_PROCESSED', 'PAYROLL_ITEMS', 'PAYROLL_POSTED', 'PAYROLL_REV', 'PAYROLL_ADV_HIST', 'ALEX_POSTED', 'ALEX_HIST'];
 
 function keepProp_(k) {
   if (/^APP_/.test(k)) return true;                                   // كلمة السر والجلسات والسجل والمواعيد
