@@ -33,7 +33,7 @@ function googleAdsDailyRun() {
     });
     if (q.getResponseCode() >= 300) throw new Error(q.getContentText());
     done.push(day);
-    p.setProperty('GADS_DAYS_PROCESSED', JSON.stringify(done.slice(-60)));
+    p.setProperty('GADS_DAYS_PROCESSED', fitJson_(done.slice(-60)));
     Logger.log(' -> POSTED ' + day + ' ' + amt);
   });
 }
@@ -130,8 +130,8 @@ function gadsSync50(dryRun) {
       headers: {Authorization: 'Bearer ' + getQboToken_(p), Accept: 'application/json'},
       payload: JSON.stringify(je), muteHttpExceptions: true});
     if (q.getResponseCode() >= 300) throw new Error(q.getContentText());
-    if (e.kind === 'EXP') { doneDays.push(e.key); p.setProperty('GADS_DAYS_PROCESSED', JSON.stringify(doneDays.slice(-400))); }
-    else { doneTx.push(e.key); p.setProperty('GADS_TX_PROCESSED', JSON.stringify(doneTx.slice(-400))); }
+    if (e.kind === 'EXP') { doneDays.push(e.key); p.setProperty('GADS_DAYS_PROCESSED', fitJson_(doneDays.slice(-400))); }
+    else { doneTx.push(e.key); p.setProperty('GADS_TX_PROCESSED', fitJson_(doneTx.slice(-400))); }
     n++;
   }
   Logger.log('Posted ' + n);

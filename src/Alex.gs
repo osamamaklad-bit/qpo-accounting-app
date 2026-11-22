@@ -126,11 +126,11 @@ function alexPost() {
   if (beforeGoLive_(todayCairo_())) throw new Error('قبل تاريخ البدء ' + goLive_());
   const res = qboPost_('journalentry', je);
   posted[key] = String(res.JournalEntry.Id);
-  P.setProperty(ALEX.POSTED, JSON.stringify(posted));
+  P.setProperty(ALEX.POSTED, fitJson_(posted));
   const hist = alexHist_(), prev = hist.length ? Number(hist[hist.length - 1].cum) || 0 : 0;
   hist.push({ d: je.TxnDate, key: key, n: b.orders.length, total: c.total, ship: c.ship, net: c.net,
     cum: Math.round((prev + c.net) * 100) / 100, q: posted[key], o: b.orders.map(function (o) { return o.order; }).join(' ') });
-  P.setProperty(ALEX.HIST, JSON.stringify(hist.slice(-ALEX.HIST_MAX)));
+  try { P.setProperty(ALEX.HIST, fitJson_(hist.slice(-ALEX.HIST_MAX))); } catch (err) { out_('WARN', 'WARN: سجل الصندوق متسجلش: ' + err); }
   return { qboId: res.JournalEntry.Id, orders: b.orders.length, net: c.net, shipping: c.ship };
 }
 

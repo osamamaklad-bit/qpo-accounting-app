@@ -35,7 +35,7 @@ function metaChargesLast50(dryRun) {
     });
     if (q.getResponseCode() >= 300) throw new Error(q.getContentText());
     done.push(t.id);
-    p.setProperty('META_CHARGES_PROCESSED', JSON.stringify(done.slice(-300)));
+    p.setProperty('META_CHARGES_PROCESSED', fitJson_(done.slice(-300)));
   });
 }
 
@@ -96,7 +96,7 @@ function metaInvoices(dryRun) {
     });
     if (q.getResponseCode() >= 300) throw new Error(q.getContentText());
     done.push(inv.id);
-    p.setProperty('META_INVOICES_PROCESSED', JSON.stringify(done.slice(-300)));
+    p.setProperty('META_INVOICES_PROCESSED', fitJson_(done.slice(-300)));
   });
 }
 

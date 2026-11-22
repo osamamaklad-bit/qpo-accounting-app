@@ -616,6 +616,23 @@ function isStateKey_(k) {
   return /^APP_/.test(k) || isProtectedKey_(k);
 }
 
+/* حد Script Properties: القيمة الواحدة متزيدش عن 9KB، ولو زادت setProperty بيفشل *بعد* ما القيد اترحّل
+ * فالعلامة متتحفظش والقيد يتكرر في التشغيل الجاي. fitJson_ بيشيل الأقدم لحد ما الحجم يدخل في الحد.
+ * (كل الـ jobs بتبص على آخر 50 حركة بس، والحد ده بيشيل أكتر من 100 علامة حتى للمفاتيح الطويلة.) */
+const PROP_MAX_BYTES = 8500;
+function propBytes_(s) { return s.replace(/[^\x00-\x7f]/g, 'xxx').length; }
+function fitJson_(val, maxBytes) {
+  const max = maxBytes || PROP_MAX_BYTES;
+  let s = JSON.stringify(val);
+  if (Array.isArray(val)) {
+    while (propBytes_(s) > max && val.length > 1) { val.splice(0, Math.max(1, Math.ceil(val.length / 20))); s = JSON.stringify(val); }
+  } else if (val && typeof val === 'object') {
+    const ks = Object.keys(val);
+    while (propBytes_(s) > max && ks.length > 1) { ks.splice(0, Math.max(1, Math.ceil(ks.length / 20))).forEach(function (k) { delete val[k]; }); s = JSON.stringify(val); }
+  }
+  return s;
+}
+
 // علامات اللي اترحّل قبل كده: تعديلها أو مسحها ممكن يرحّل نفس القيد تاني
 function isProtectedKey_(k) {
   if (STATE_KEYS.indexOf(k) > -1 || /PROCESSED$/.test(k) || /^PQ_Q_/.test(k)) return true;
@@ -767,6 +784,10 @@ function api_healthCheck(t) {
     if (payMissing.length) return { status: 'warn', msg: msg + ' · payroll accounts missing: ' + payMissing.length,
       fix: 'ناقص ' + payMissing.length + ' من حسابات الرواتب والإيجارات: حطهم من تاب الرواتب ← "حسابات كويك بوكس".',
       fix_en: payMissing.length + ' payroll & rent accounts missing: fill them in the Payroll tab → “QuickBooks accounts”.' };
+    const alexMissing = all.ALEX_SHEET_ID ? ['QBO_CASH_ACCOUNT_ID', 'QBO_UNDEPOSITED_FUNDS_ACCOUNT_ID', 'QBO_ALEX_SHIPPING_ACCOUNT_ID'].filter(function (k) { return !all[k]; }) : [];
+    if (alexMissing.length) return { status: 'warn', msg: msg + ' · Alex accounts missing: ' + alexMissing.join(', '),
+      fix: 'صندوق إسكندرية ناقصه: ' + alexMissing.join('، ') + '. حطهم من الإعدادات ← مندوب إسكندرية.',
+      fix_en: 'Alex cash box is missing: ' + alexMissing.join(', ') + '. Set them in Settings → Alexandria rider.' };
     if (!trig) return { status: 'warn', msg: msg, fix: 'مفيش ولا موعد شغال: فعّل المواعيد من الرئيسية لما الاتصالات تبقى تمام.', fix_en: 'No schedules are on: turn them on from the overview once the connections are OK.' };
     return { msg: msg };
   }));

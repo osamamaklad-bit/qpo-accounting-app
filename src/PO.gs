@@ -57,7 +57,7 @@ function dailyRun() {
       processed.push(t.id);
       props.setProperty(
         'PROCESSED',
-        JSON.stringify(processed.slice(-300))
+        fitJson_(processed.slice(-300))
       );
       done.push(t.name);
 
@@ -106,7 +106,7 @@ function markExistingAsProcessed() {
   // بنضيف على اللي موجود (مش بنستبدل) عشان تحويل اتعالج قبل كده ما يرجعش تاني
   const old = JSON.parse(props.getProperty('PROCESSED') || '[]');
   ids.forEach(function (id) { if (old.indexOf(id) === -1) old.push(id); });
-  props.setProperty('PROCESSED', JSON.stringify(old.slice(-300)));
+  props.setProperty('PROCESSED', fitJson_(old.slice(-300)));
 
   Logger.log(
     'Marked ' + ids.length + ' existing transfers as processed.'

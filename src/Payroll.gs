@@ -38,12 +38,22 @@ const PAY_HIST = 'PAYROLL_ADV_HIST', PAY_HIST_MAX = 60;
 function payHist_() {
   try { return JSON.parse(PropertiesService.getScriptProperties().getProperty(PAY_HIST) || '{}'); } catch (e) { return {}; }
 }
+// مبيرميش خطأ أبدًا: الكشف للمتابعة بس، ومينفعش يوقف تحديث الرصيد
 function payHistAdd_(id, e) {
-  const h = payHist_(), list = h[id] || [];
-  e.d = e.d || Utilities.formatDate(new Date(), APP.TZ, 'yyyy-MM-dd');
-  list.push(e);
-  h[id] = list.slice(-PAY_HIST_MAX);
-  PropertiesService.getScriptProperties().setProperty(PAY_HIST, JSON.stringify(h));
+  try {
+    const h = payHist_(), list = h[id] || [];
+    e.d = e.d || Utilities.formatDate(new Date(), APP.TZ, 'yyyy-MM-dd');
+    list.push(e);
+    h[id] = list.slice(-PAY_HIST_MAX);
+    // لو الحجم زاد عن حد الخاصية: نشيل أقدم حركة من أطول كشف
+    let s = JSON.stringify(h);
+    while (propBytes_(s) > PROP_MAX_BYTES) {
+      const longest = Object.keys(h).sort(function (a, b) { return h[b].length - h[a].length; })[0];
+      if (!longest || h[longest].length <= 1) break;
+      h[longest].shift(); s = JSON.stringify(h);
+    }
+    PropertiesService.getScriptProperties().setProperty(PAY_HIST, s);
+  } catch (err) { out_('WARN', 'WARN: كشف السلف متسجلش: ' + err); }
 }
 
 function payUpdateItem_(id, fn) {
@@ -141,7 +151,7 @@ function payPostOne_(it, period, posted) {
   if (beforeGoLive_(todayCairo_())) return { id: it.id, name: it.name, skipped: 'before GO_LIVE_DATE ' + goLive_() };
   const res = qboPost_('journalentry', b.je);
   posted[key] = String(res.JournalEntry.Id);
-  PropertiesService.getScriptProperties().setProperty(PAY.POSTED, JSON.stringify(posted));
+  PropertiesService.getScriptProperties().setProperty(PAY.POSTED, fitJson_(posted));
   // الخصم اتطبق مرة واحدة: بيتمسح، ورصيد السلفة بيقل
   if (b.kind !== 'none') payUpdateItem_(it.id, function (cur) {
     if (b.kind === 'advance') {
